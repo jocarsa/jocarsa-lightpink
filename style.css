@@ -78,7 +78,7 @@ html, body {
 /* Contenedor principal de la agenda */
 .agenda-container {
     display: flex;
-    height: calc(100% - 60px); /* Approx header height */
+    height: calc(100% - 80px); /* Approx header height */
 }
 
 /* Panel izquierdo: Tabla de horarios */
@@ -243,5 +243,18 @@ html, body {
 }
 .month-table td{
 	width:100px;
+}
+h1{
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	justify-content: center;
+	align-items: center;
+	align-content: stretch;
+}
+
+h1 img{
+	width:50px;
+	margin-right:10px;
 }
 

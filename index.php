@@ -423,7 +423,7 @@ if ($view === 'month') {
 
 <header class="top-header">
     <div class="header-title">
-        <h1 title="Tu agenda diaria en línea">jocarsa | lightpink</h1>
+        <h1 title="Tu agenda diaria en línea"><img src="lightpink.png">jocarsa | lightpink</h1>
     </div>
 
     <?php if (isset($_SESSION['user_id'])): ?>
