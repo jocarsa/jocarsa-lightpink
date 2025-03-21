@@ -8,6 +8,7 @@ $db = new SQLite3('../databases/lightpink.db');
 
 // ----------------------------------------------------------------------
 // 2. Crear tablas si no existen
+//    (Incluye columnas color_tag y group_flag en day_slots.)
 // ----------------------------------------------------------------------
 $db->exec("
     CREATE TABLE IF NOT EXISTS users (
@@ -16,6 +17,19 @@ $db->exec("
         email TEXT NOT NULL UNIQUE,
         username TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL
+    )
+");
+
+$db->exec("
+    CREATE TABLE IF NOT EXISTS day_slots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        time_slot TEXT NOT NULL,
+        description TEXT,
+        color_tag TEXT,
+        group_flag INTEGER DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id)
     )
 ");
 
@@ -36,17 +50,6 @@ $db->exec("
         project_time REAL DEFAULT 0,
         exercise_time REAL DEFAULT 0,
         exercise_desc TEXT, 
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-");
-
-$db->exec("
-    CREATE TABLE IF NOT EXISTS day_slots (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        date TEXT NOT NULL,
-        time_slot TEXT NOT NULL,
-        description TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )
 ");
@@ -148,9 +151,11 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
 
     // A) Actualizar ranura horaria (slots)
     if ($_POST['action'] === 'update_slot') {
-        $date      = $_POST['date'] ?? date('Y-m-d');
-        $time_slot = $_POST['time_slot'] ?? '';
-        $desc      = trim($_POST['description'] ?? '');
+        $date       = $_POST['date']       ?? date('Y-m-d');
+        $time_slot  = $_POST['time_slot']  ?? '';
+        $desc       = trim($_POST['description'] ?? '');
+        $color_tag  = $_POST['color_tag']  ?? '';
+        $group_flag = isset($_POST['group_flag']) ? (int)$_POST['group_flag'] : 0;
 
         $check = $db->prepare("
             SELECT id FROM day_slots 
@@ -164,23 +169,31 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         $exists = $check->execute()->fetchArray(SQLITE3_ASSOC);
 
         if ($exists) {
+            // Update
             $upd = $db->prepare("
                 UPDATE day_slots
-                   SET description = :desc
+                   SET description = :desc,
+                       color_tag   = :color_tag,
+                       group_flag  = :group_flag
                  WHERE id = :id
             ");
-            $upd->bindValue(':desc', $desc);
-            $upd->bindValue(':id', $exists['id']);
+            $upd->bindValue(':desc',       $desc);
+            $upd->bindValue(':color_tag',  $color_tag);
+            $upd->bindValue(':group_flag', $group_flag);
+            $upd->bindValue(':id',         $exists['id']);
             $upd->execute();
         } else {
+            // Insert
             $ins = $db->prepare("
-                INSERT INTO day_slots (user_id, date, time_slot, description)
-                VALUES (:u, :d, :ts, :desc)
+                INSERT INTO day_slots (user_id, date, time_slot, description, color_tag, group_flag)
+                VALUES (:u, :d, :ts, :desc, :color_tag, :group_flag)
             ");
-            $ins->bindValue(':u', $user_id);
-            $ins->bindValue(':d', $date);
-            $ins->bindValue(':ts', $time_slot);
-            $ins->bindValue(':desc', $desc);
+            $ins->bindValue(':u',          $user_id);
+            $ins->bindValue(':d',          $date);
+            $ins->bindValue(':ts',         $time_slot);
+            $ins->bindValue(':desc',       $desc);
+            $ins->bindValue(':color_tag',  $color_tag);
+            $ins->bindValue(':group_flag', $group_flag);
             $ins->execute();
         }
 
@@ -215,7 +228,7 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         $row = $check->execute()->fetchArray(SQLITE3_ASSOC);
 
         if ($row) {
-            // Update existing row
+            // Update
             $upd = $db->prepare("
                 UPDATE daily_data
                    SET $field = :val
@@ -225,7 +238,7 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
             $upd->bindValue(':id', $row['id']);
             $upd->execute();
         } else {
-            // Insert a new row with the single updated field
+            // Insert
             $insFields = [
                 'notes'            => '',
                 'checklist'        => '',
@@ -273,35 +286,34 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         exit;
     }
 
-    // If we get here, no valid action
+    // Si llega aquí, no es una acción válida
     echo json_encode(['status' => 'error', 'message' => 'Acción no válida.']);
     exit;
 }
 
 // ----------------------------------------------------------------------
-// 8. Saber si mostramos la vista "mes" (monthly) o la diaria
+// 8. Determinar vista: 'day' (diaria) o 'month' (mensual)
 // ----------------------------------------------------------------------
-$view = isset($_GET['view']) ? $_GET['view'] : 'day';  // 'month' or 'day'
+$view = isset($_GET['view']) ? $_GET['view'] : 'day';
 
 // ----------------------------------------------------------------------
 // 9. Lógica para la vista diaria
-//    (solo se ejecuta si $view === 'day')
 // ----------------------------------------------------------------------
 $currentDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 if ($view === 'day') {
-    // Navegar anterior
+    // Navegación anterior
     if (isset($_GET['prev']) && $_GET['prev'] == 1) {
         $time = strtotime($currentDate) - 86400;
         $currentDate = date('Y-m-d', $time);
     }
-    // Navegar siguiente
+    // Navegación siguiente
     if (isset($_GET['next']) && $_GET['next'] == 1) {
         $time = strtotime($currentDate) + 86400;
         $currentDate = date('Y-m-d', $time);
     }
 
-    // Recuperar datos para la vista diaria
+    // Recuperar data
     $dailyData   = [];
     $timeSlots   = [];
     $daySlotData = [];
@@ -320,17 +332,16 @@ if ($view === 'day') {
         $res = $stmt->execute();
         $dailyData = $res->fetchArray(SQLITE3_ASSOC);
 
-        // b) slots (6:00 a 24:00 en intervalos de 30 minutos)
+        // b) Generar slots desde 06:00 a 24:00 cada 30'
         $start = strtotime("06:00");
         $end   = strtotime("24:00");
         for ($t = $start; $t < $end; $t += 1800) {
-            $slot = date('H:i', $t);
-            $timeSlots[] = $slot;
+            $timeSlots[] = date('H:i', $t);
         }
 
-        // c) day_slots (existing data)
+        // c) day_slots (ya existentes)
         $slotStmt = $db->prepare("
-            SELECT time_slot, description
+            SELECT time_slot, description, color_tag, group_flag
             FROM day_slots
             WHERE user_id = :u 
               AND date = :d
@@ -339,49 +350,43 @@ if ($view === 'day') {
         $slotStmt->bindValue(':d', $currentDate);
         $slotRes = $slotStmt->execute();
         while ($row = $slotRes->fetchArray(SQLITE3_ASSOC)) {
-            $daySlotData[$row['time_slot']] = $row['description'];
+            $ts = $row['time_slot'];
+            $daySlotData[$ts] = [
+                'description' => $row['description'],
+                'color_tag'   => $row['color_tag'],
+                'group_flag'  => $row['group_flag']
+            ];
         }
     }
 }
 
 // ----------------------------------------------------------------------
 // 10. Lógica para la vista mensual
-//     (solo se ejecuta si $view === 'month')
 // ----------------------------------------------------------------------
 if ($view === 'month') {
-    // 1) Determinar año y mes actual
     $year  = isset($_GET['year'])  ? (int)$_GET['year']  : date('Y');
-    $month = isset($_GET['month']) ? (int)$_GET['month'] : date('n'); // 1-12
+    $month = isset($_GET['month']) ? (int)$_GET['month'] : date('n');
 
-    // 2) Cambiar mes (prev/next)
+    // Cambios mes anterior / siguiente
     if (isset($_GET['prev']) && $_GET['prev'] == 1) {
-        // Move one month back
         $prevMonth = strtotime("-1 month", strtotime("$year-$month-01"));
         $year  = date('Y', $prevMonth);
         $month = date('n', $prevMonth);
     }
     if (isset($_GET['next']) && $_GET['next'] == 1) {
-        // Move one month forward
         $nextMonth = strtotime("+1 month", strtotime("$year-$month-01"));
         $year  = date('Y', $nextMonth);
         $month = date('n', $nextMonth);
     }
 
-    // 3) Construir días del mes
     $firstDayOfMonth = strtotime("$year-$month-01");
-    $daysInMonth     = date('t', $firstDayOfMonth); // total days in month
-    // We’ll display from Sunday of the first week to Saturday of the last
-    $startWeekDay    = date('w', $firstDayOfMonth); // 0=Sunday, 1=Monday, ...
-    
-    // 4) Obtener los day_slots del rango [1..daysInMonth]
-    $monthStart = date('Y-m-d', $firstDayOfMonth);
-    $monthEnd   = date('Y-m-d', strtotime("$year-$month-$daysInMonth"));
-
-    $monthEvents = []; // array: 'YYYY-MM-DD' => array of [time_slot, description]
+    $daysInMonth     = date('t', $firstDayOfMonth);
+    $monthStart      = date('Y-m-d', $firstDayOfMonth);
+    $monthEnd        = date('Y-m-d', strtotime("$year-$month-$daysInMonth"));
+    $monthEvents     = [];
 
     if (isset($_SESSION['user_id'])) {
         $user_id = $_SESSION['user_id'];
-        // Query all day_slots in the month
         $slotStmt = $db->prepare("
             SELECT date, time_slot, description
             FROM day_slots
@@ -395,15 +400,14 @@ if ($view === 'month') {
         $slotStmt->bindValue(':end',   $monthEnd);
         $slotRes = $slotStmt->execute();
         while ($row = $slotRes->fetchArray(SQLITE3_ASSOC)) {
-            $day  = $row['date'];
-            $slot = [
-                'time_slot'   => $row['time_slot'],
-                'description' => $row['description']
-            ];
+            $day = $row['date'];
             if (!isset($monthEvents[$day])) {
                 $monthEvents[$day] = [];
             }
-            $monthEvents[$day][] = $slot;
+            $monthEvents[$day][] = [
+                'time_slot'   => $row['time_slot'],
+                'description' => $row['description']
+            ];
         }
     }
 }
@@ -423,7 +427,9 @@ if ($view === 'month') {
 
 <header class="top-header">
     <div class="header-title">
-        <h1 title="Tu agenda diaria en línea"><img src="lightpink.png">jocarsa | lightpink</h1>
+        <h1 title="Tu agenda diaria en línea">
+            <img src="lightpink.png" alt="logo">jocarsa | lightpink
+        </h1>
     </div>
 
     <?php if (isset($_SESSION['user_id'])): ?>
@@ -432,28 +438,22 @@ if ($view === 'month') {
                 <?php echo htmlspecialchars($_SESSION['full_name']); ?>
             </div>
 
-            <!-- If we are on daily view, show daily nav. If in monthly, skip. -->
             <?php if ($view === 'day'): ?>
             <nav class="date-nav">
                 <a href="?view=day&prev=1&date=<?php echo $currentDate; ?>" 
-                   title="Ir al día anterior">&lt;</a>
-                <span title="Día seleccionado"><?php echo $currentDate; ?></span>
+                   title="Día anterior">&lt;</a>
+                <span><?php echo $currentDate; ?></span>
                 <a href="?view=day&next=1&date=<?php echo $currentDate; ?>" 
-                   title="Ir al día siguiente">&gt;</a>
+                   title="Día siguiente">&gt;</a>
             </nav>
             <?php endif; ?>
 
-            <!-- Link to monthly or daily view -->
             <?php if ($view === 'day'): ?>
-                <!-- If currently in daily mode, link to month mode. -->
                 <a style="text-decoration:none; margin-right: 15px;"
-                   href="?view=month"
-                   title="Ver vista mensual">&#128197; Mes</a>
+                   href="?view=month" title="Ver vista mensual">&#128197; Mes</a>
             <?php else: ?>
-                <!-- If currently in monthly mode, link back to daily. -->
                 <a style="text-decoration:none; margin-right: 15px;"
-                   href="?view=day"
-                   title="Ver vista diaria">&#128337; Día</a>
+                   href="?view=day" title="Ver vista diaria">&#128337; Día</a>
             <?php endif; ?>
 
             <a class="logout-link" href="index.php?action=logout" 
@@ -463,13 +463,13 @@ if ($view === 'month') {
 </header>
 
 <?php if (isset($message)): ?>
-    <div class="message" title="Mensaje de estado">
+    <div class="message">
         <?php echo htmlspecialchars($message); ?>
     </div>
 <?php endif; ?>
 
 <?php if (!isset($_SESSION['user_id'])): ?>
-    <!-- Form de Login & Registro -->
+    <!-- Login & Registro -->
     <div class="auth-container">
         <div class="login-form">
             <h2>Iniciar Sesión</h2>
@@ -498,20 +498,19 @@ if ($view === 'month') {
             </form>
         </div>
     </div>
+
 <?php else: ?>
 
-    <!-- *************************************************************** -->
-    <!-- NEW CODE FOR MONTHLY VIEW -->
-    <!-- *************************************************************** -->
+    <!-- *************************************** -->
+    <!-- Vista Mensual -->
+    <!-- *************************************** -->
     <?php if ($view === 'month'): ?>
         <?php
-        // Pre-calculate some values
-        $firstDayOfMonth  = strtotime("$year-$month-01");
-        $daysInMonth      = date('t', $firstDayOfMonth);
-        // Sunday-based
-        $startWeekDay     = date('w', $firstDayOfMonth); // 0=Sunday
-        $monthName        = date('F', $firstDayOfMonth); // English month name
-        // You could map $monthName to Spanish if you wish, or do strftime() with locale
+        $firstDayOfMonth  = isset($firstDayOfMonth) ? $firstDayOfMonth : strtotime(date('Y-m-01'));
+        $daysInMonth      = isset($daysInMonth)     ? $daysInMonth     : date('t');
+        $startWeekDay     = date('w', $firstDayOfMonth); // 0 = Sunday
+        setlocale(LC_TIME, 'es_ES.UTF-8'); // for Spanish month name (if server supports)
+        $monthName        = strftime('%B', $firstDayOfMonth);
         ?>
 
         <div class="month-container" style="padding:20px;">
@@ -520,7 +519,7 @@ if ($view === 'month') {
                    href="?view=month&prev=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&lt;&lt;</a>
                 
                 <div style="font-weight:bold; font-size:1.1rem;">
-                    <?php echo "$monthName $year"; ?>
+                    <?php echo ucfirst($monthName) . " " . $year; ?>
                 </div>
 
                 <a style="text-decoration:none; font-size:1.2rem;" 
@@ -541,44 +540,35 @@ if ($view === 'month') {
                 </thead>
                 <tbody>
                 <?php
-                // We'll print rows <tr> for each week
-                // Because Sunday is 0, let's line up the days accordingly
                 $dayCounter = 1; 
                 $cellCount  = 0;
 
-                // The first row might have empty cells if the month doesn't start on Sunday
                 echo "<tr>";
                 for ($blank = 0; $blank < $startWeekDay; $blank++) {
                     echo "<td style='border:1px solid #FFD9E1; height:100px; vertical-align:top; background-color:#FFF2F5;'></td>";
                     $cellCount++;
                 }
 
-                // Now print actual days
                 while ($dayCounter <= $daysInMonth) {
-                    // If we've reached 7 cells in a row, start a new <tr>
                     if ($cellCount % 7 == 0 && $cellCount != 0) {
                         echo "</tr><tr>";
                     }
 
-                    // The actual date string
                     $currentCellDate = sprintf('%04d-%02d-%02d', $year, $month, $dayCounter);
-
-                    // Show events if any
                     $events = isset($monthEvents[$currentCellDate]) ? $monthEvents[$currentCellDate] : [];
 
                     echo "<td style='border:1px solid #FFD9E1; height:100px; vertical-align:top; padding:4px;'>";
-                    // Day number (clickable link to daily view)
+                    // Día con link
                     echo "<div style='font-weight:bold; margin-bottom:4px;'>
-                            <a href='?view=day&date=$currentCellDate' style='text-decoration:none; color:#862D42;'>
+                            <a href='?view=day&date=$currentCellDate' 
+                               style='text-decoration:none; color:#862D42;'>
                                 $dayCounter
                             </a>
                           </div>";
 
-                    // List each event as a small tag
                     foreach ($events as $ev) {
                         $t = htmlspecialchars($ev['time_slot']);
                         $d = htmlspecialchars($ev['description']);
-                        // Link to that day as well
                         echo "<div style='margin-bottom:4px; font-size:0.85rem;'>
                                 <a href='?view=day&date=$currentCellDate'
                                    style='color:#862D42; text-decoration:none;'>
@@ -593,7 +583,6 @@ if ($view === 'month') {
                     $cellCount++;
                 }
 
-                // Fill the remaining cells of the last row (if any)
                 while ($cellCount % 7 != 0) {
                     echo "<td style='border:1px solid #FFD9E1; background-color:#FFF2F5;'></td>";
                     $cellCount++;
@@ -604,9 +593,9 @@ if ($view === 'month') {
             </table>
         </div>
 
-    <!-- *************************************************************** -->
-    <!-- DAILY VIEW CODE (original) -->
-    <!-- *************************************************************** -->
+    <!-- *************************************** -->
+    <!-- Vista Diaria -->
+    <!-- *************************************** -->
     <?php else: ?>
         <div class="agenda-container">
             <!-- Panel Izquierdo: slots -->
@@ -615,19 +604,40 @@ if ($view === 'month') {
                     <thead>
                         <tr>
                             <th>Hora</th>
+                            <th>Color</th>
+                            <th>Group</th>
                             <th>Contenido</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php foreach ($timeSlots as $slot):
-                        $desc = $daySlotData[$slot] ?? '';
+                        $desc      = $daySlotData[$slot]['description'] ?? '';
+                        $colorTag  = $daySlotData[$slot]['color_tag']   ?? '#ffffff';
+                        $groupFlag = $daySlotData[$slot]['group_flag']  ?? 0;
+                        $checked   = $groupFlag ? 'checked' : '';
                     ?>
-                        <tr>
+                        <tr class="time-slot-row" data-timeslot="<?php echo $slot; ?>">
+                            <!-- Hora -->
                             <td class="slot-label"><?php echo $slot; ?></td>
+                            <!-- Color -->
+                            <td class="slot-color">
+                                <input type="color" 
+                                       class="slot-color-input"
+                                       data-timeslot="<?php echo $slot; ?>"
+                                       value="<?php echo htmlspecialchars($colorTag); ?>">
+                            </td>
+                            <!-- Group (hidden checkbox, clickable cell) -->
+                            <td class="slot-group">
+                                <input type="checkbox"
+                                       class="slot-group-input"
+                                       data-timeslot="<?php echo $slot; ?>"
+                                       <?php echo $checked; ?>>
+                            </td>
+                            <!-- Contenido -->
                             <td>
                                 <textarea class="slot-input"
                                           data-timeslot="<?php echo $slot; ?>"
-                                          title="Agregar notas para la hora <?php echo $slot; ?>"
+                                          title="Notas para la hora <?php echo $slot; ?>"
                                 ><?php echo htmlspecialchars($desc); ?></textarea>
                             </td>
                         </tr>
@@ -713,34 +723,63 @@ if ($view === 'month') {
                                placeholder="Ej: Correr, Yoga, Pesas...">
                     </div>
                 </div>
+            </div>
+        </div> <!-- end agenda-container -->
 
-            </div><!-- end right-panel -->
-        </div><!-- end agenda-container -->
-
-        <!-- Script para AJAX (mismo que antes) -->
+        <!-- Script para manejo de cambios (color, group, description, daily fields) -->
         <script>
         (function(){
             const currentDate = "<?php echo $currentDate; ?>";
 
-            // Escuchar cambios en cada slot
-            document.querySelectorAll('.slot-input').forEach(function(elem){
-                elem.addEventListener('input', function(){
-                    let timeSlot = this.getAttribute('data-timeslot');
-                    let description = this.value;
-                    saveSlot(timeSlot, description);
+            // 1) Toggle group checkbox by clicking the entire <td>
+            document.querySelectorAll('.slot-group').forEach(td => {
+                td.addEventListener('click', function(e){
+                    // If user clicked directly on the hidden checkbox, do nothing
+                    if (e.target.classList.contains('slot-group-input')) {
+                        return; 
+                    }
+                    // Otherwise, toggle the checkbox
+                    const checkbox = td.querySelector('.slot-group-input');
+                    checkbox.checked = !checkbox.checked;
+                    saveSlotFromRow( this.closest('tr.time-slot-row') );
+                    refreshGroupingVisual();
+                    e.stopPropagation();
                 });
             });
 
-            // Escuchar cambios en datos diarios
-            document.querySelectorAll('.daily-data').forEach(function(elem){
-                elem.addEventListener('input', function(){
-                    let field = this.getAttribute('data-field');
-                    let value = this.value;
-                    saveDailyData(field, value);
+            // 2) If the checkbox changes on its own
+            document.querySelectorAll('.slot-group-input').forEach(cb => {
+                cb.addEventListener('change', function(){
+                    const row = this.closest('tr.time-slot-row');
+                    saveSlotFromRow(row);
+                    refreshGroupingVisual();
                 });
             });
 
-            function saveSlot(timeSlot, description) {
+            // 3) Color changes
+            document.querySelectorAll('.slot-color-input').forEach(elem => {
+                elem.addEventListener('input', function(){
+                    const row = this.closest('tr.time-slot-row');
+                    row.style.backgroundColor = this.value;
+                    saveSlotFromRow(row);
+                });
+            });
+
+            // 4) Description changes
+            document.querySelectorAll('.slot-input').forEach(elem => {
+                elem.addEventListener('input', function(){
+                    const row = this.closest('tr.time-slot-row');
+                    saveSlotFromRow(row);
+                });
+            });
+
+            // 5) Save slot function
+            function saveSlotFromRow(row) {
+                const timeSlot    = row.getAttribute('data-timeslot');
+                const description = row.querySelector('.slot-input').value;
+                const colorTag    = row.querySelector('.slot-color-input').value;
+                const groupFlag   = row.querySelector('.slot-group-input').checked ? 1 : 0;
+
                 fetch('index.php', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -749,7 +788,9 @@ if ($view === 'month') {
                         action: 'update_slot',
                         date: currentDate,
                         time_slot: timeSlot,
-                        description: description
+                        description: description,
+                        color_tag: colorTag,
+                        group_flag: groupFlag
                     })
                 })
                 .then(r => r.json())
@@ -761,6 +802,14 @@ if ($view === 'month') {
                 .catch(err => console.error(err));
             }
 
+            // 6) Daily data changes
+            document.querySelectorAll('.daily-data').forEach(function(elem){
+                elem.addEventListener('input', function(){
+                    let field = this.getAttribute('data-field');
+                    let value = this.value;
+                    saveDailyData(field, value);
+                });
+            });
             function saveDailyData(field, value) {
                 fetch('index.php', {
                     method: 'POST',
@@ -781,10 +830,58 @@ if ($view === 'month') {
                 })
                 .catch(err => console.error(err));
             }
+
+            // 7) Refresh grouping lines in the 3rd column
+            function refreshGroupingVisual() {
+                const rows = Array.from(document.querySelectorAll('.time-slot-row'));
+                // clear old classes
+                rows.forEach(r => {
+                    const tdGroup = r.querySelector('.slot-group');
+                    tdGroup.classList.remove('grouped','group-start','group-end');
+                });
+
+                let groupActive = false;
+                let startIndex  = -1;
+
+                for (let i = 0; i < rows.length; i++) {
+                    const cb   = rows[i].querySelector('.slot-group-input');
+                    const tdG  = rows[i].querySelector('.slot-group');
+                    if (cb && cb.checked) {
+                        tdG.classList.add('grouped');
+                        if (!groupActive) {
+                            // start new group
+                            groupActive = true;
+                            startIndex  = i;
+                        }
+                    } else {
+                        // if we were in a group, end it
+                        if (groupActive) {
+                            rows[i-1].querySelector('.slot-group').classList.add('group-end');
+                            rows[startIndex].querySelector('.slot-group').classList.add('group-start');
+                        }
+                        groupActive = false;
+                    }
+                }
+                // if group extends to last row
+                if (groupActive) {
+                    rows[rows.length - 1].querySelector('.slot-group').classList.add('group-end');
+                    rows[startIndex].querySelector('.slot-group').classList.add('group-start');
+                }
+            }
+
+            // On page load
+            window.addEventListener('load', function(){
+                // apply background colors
+                document.querySelectorAll('.time-slot-row').forEach(row => {
+                    const colorVal = row.querySelector('.slot-color-input').value;
+                    row.style.backgroundColor = colorVal;
+                });
+                refreshGroupingVisual();
+            });
         })();
         </script>
-    <?php endif; // end if view=day or month ?>
-<?php endif; // end if logged in ?>
+    <?php endif; ?>
+<?php endif; ?>
 
 </body>
 </html>

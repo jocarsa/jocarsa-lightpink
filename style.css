@@ -10,23 +10,27 @@ html, body {
     width: 100%;
     height: 100%;
     font-family: Ubuntu, Helvetica, Arial, sans-serif;
-    /* Main background: a gentle pink gradient */
     background: linear-gradient(to bottom right, #FFD6DD, lightpink);
 }
 
-/* Encabezado superior (top header) */
+/* Top header */
 .top-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    /* Use lightpink as the header background */
     background-color: lightpink;
     padding: 10px 20px;
 }
 .top-header .header-title h1 {
     font-size: 1.5rem;
-    color: #862D42; /* A darker pinkish text color */
+    color: #862D42;
     margin: 0;
+    display: flex;
+    align-items: center;
+}
+.top-header .header-title h1 img {
+    width: 50px;
+    margin-right: 10px;
 }
 .header-userinfo {
     display: flex;
@@ -57,17 +61,16 @@ html, body {
     color: #862D42;
     font-weight: bold;
 }
-/* Logout link styled as a small button */
 .logout-link {
     text-decoration: none;
     color: #fff;
-    background-color: #E67A90; /* A slightly darker pink button color */
+    background-color: #E67A90;
     padding: 6px 12px;
     border-radius: 4px;
     font-size: 0.9rem;
 }
 
-/* Mensaje global */
+/* Mensaje */
 .message {
     background-color: #FFF2F5;
     color: #862D42;
@@ -75,13 +78,13 @@ html, body {
     border-bottom: 1px solid #FFC9D3;
 }
 
-/* Contenedor principal de la agenda */
+/* Agenda container */
 .agenda-container {
     display: flex;
-    height: calc(100% - 80px); /* Approx header height */
+    height: calc(100% - 80px); /* approximate header + message height */
 }
 
-/* Panel izquierdo: Tabla de horarios */
+/* Left panel: Time Table */
 .left-panel {
     flex: 2;
     overflow-y: auto;
@@ -92,7 +95,7 @@ html, body {
     background-color: #FFF;
 }
 .time-table thead th {
-    background-color: #FFC8D1; /* Slightly deeper pink for the header cells */
+    background-color: #FFC8D1;
     color: #862D42;
     padding: 8px;
     text-align: left;
@@ -106,13 +109,35 @@ html, body {
     vertical-align: top;
     border-bottom: 1px solid #FFD9E1;
 }
+
+/* Hour label */
 .slot-label {
     width: 60px;
     font-weight: bold;
     color: #862D42;
     text-align: center;
 }
-/* Slot textareas with minimal border, pink highlight on focus */
+
+/* Color input cell */
+.slot-color {
+    width: 60px;
+    text-align: center;
+}
+
+/* Group cell */
+.slot-group {
+    position: relative; /* needed for pseudo-elements */
+    width: 40px;        /* enough space for line if needed */
+    text-align: center;
+    cursor: pointer;    /* let user see it's clickable */
+}
+
+/* Hide the actual checkbox */
+.slot-group-input {
+    display: none;
+}
+
+/* Basic text area for content */
 .slot-input {
     width: 100%;
     min-height: 40px;
@@ -124,13 +149,13 @@ html, body {
     outline: none;
     font-family: inherit;
     color: #862D42;
-    border-bottom: 1px dashed #E67A90; /* Soft pink bottom dash */
+    border-bottom: 1px dashed #E67A90;
 }
 .slot-input:focus {
     background-color: #FFF7F9;
 }
 
-/* Panel derecho: Datos diarios */
+/* Right panel: daily data */
 .right-panel {
     flex: 1;
     overflow-y: auto;
@@ -149,7 +174,6 @@ html, body {
     color: #862D42;
     font-size: 0.95rem;
 }
-/* Daily data textareas & inputs with minimal border */
 .daily-data {
     width: 100%;
     min-height: 40px;
@@ -166,8 +190,6 @@ html, body {
 .daily-data:focus {
     background-color: #FFF7F9;
 }
-
-/* Grid for numeric fields (sleep_time, etc.) */
 .hours-grid {
     display: flex;
     flex-wrap: wrap;
@@ -192,7 +214,7 @@ html, body {
     background-color: #FFF7F9;
 }
 
-/* Formulario de Autenticación */
+/* Auth forms */
 .auth-container {
     display: flex;
     gap: 20px;
@@ -230,7 +252,7 @@ html, body {
 .auth-container button {
     margin-top: 15px;
     padding: 10px 15px;
-    background-color: #E67A90; /* Pink button */
+    background-color: #E67A90;
     color: #FFF;
     border: none;
     border-radius: 4px;
@@ -241,20 +263,36 @@ html, body {
 .auth-container button:hover {
     background-color: #CC5F78;
 }
-.month-table td{
-	width:100px;
-}
-h1{
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	justify-content: center;
-	align-items: center;
-	align-content: stretch;
+
+/* Month view styling */
+.month-table td {
+    width: 100px;
 }
 
-h1 img{
-	width:50px;
-	margin-right:10px;
+/* GROUPING VISUAL: 
+   We'll add a vertical "bar" in .slot-group cells
+   when consecutive rows are checked. We'll also
+   handle .group-start and .group-end to create top/bottom gaps. */
+.slot-group.grouped::before {
+    content: "";
+    position: absolute;
+    left: 50%; 
+    top: 0; 
+    bottom: 0;
+    width: 2px;
+    background-color: #862D42;
 }
+
+/* The first grouped slot - add some top gap. */
+.slot-group.grouped.group-start::before {
+    top: 8px;
+}
+
+/* The last grouped slot - add some bottom gap. */
+.slot-group.grouped.group-end::before {
+    bottom: 8px;
+}
+
+/* If a row is both the first and last in a group (single-row group),
+   it effectively sets top:8px and bottom:8px, creating a short vertical line. */
 
