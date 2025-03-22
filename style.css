@@ -8,11 +8,22 @@
     padding: 0;
     box-sizing: border-box;
 }
+
+/* 1) Prevent iOS from auto-scaling text */
 html, body {
     width: 100%;
     height: 100%;
     font-family: Ubuntu, Helvetica, Arial, sans-serif;
     background: linear-gradient(to bottom right, #FFD6DD, lightpink);
+    -webkit-text-size-adjust: 100%; /* iOS: disable text auto-adjust */
+}
+
+/* 2) Force inputs to be at least 16px to avoid iOS zoom on focus */
+input,
+textarea,
+select {
+    font-size: 16px !important;
+    line-height: 1.4;
 }
 /* If not already in your <head>, ensure you have:
    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
