@@ -1,4 +1,6 @@
-/* Reset & Base */
+/* =========================================
+   BASE / RESET
+========================================= */
 @import url('https://static.jocarsa.com/fuentes/ubuntu-font-family-0.83/ubuntu.css');
 
 * {
@@ -12,36 +14,47 @@ html, body {
     font-family: Ubuntu, Helvetica, Arial, sans-serif;
     background: linear-gradient(to bottom right, #FFD6DD, lightpink);
 }
+/* If not already in your <head>, ensure you have:
+   <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+*/
 
-/* Top header */
+/* =========================================
+   HEADER (vertical column layout)
+========================================= */
 .top-header {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
     background-color: lightpink;
     padding: 10px 20px;
+    gap: 10px; /* space between elements */
 }
-.top-header .header-title h1 {
+.header-title h1 {
     font-size: 1.5rem;
     color: #862D42;
     margin: 0;
     display: flex;
     align-items: center;
+    justify-content: center;
 }
-.top-header .header-title h1 img {
+.header-title h1 img {
     width: 50px;
     margin-right: 10px;
 }
+
+/* Container for user name, date nav, etc. */
 .header-userinfo {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 10px;
 }
 .header-userinfo .welcome {
     font-weight: bold;
     color: #862D42;
     font-size: 1rem;
 }
+/* Day nav (prev/next) */
 .date-nav {
     display: flex;
     align-items: center;
@@ -61,16 +74,28 @@ html, body {
     color: #862D42;
     font-weight: bold;
 }
-.logout-link {
+/* Month/Day toggle + Logout */
+.header-links {
+    display: flex;
+    gap: 15px;
+}
+.header-links a {
     text-decoration: none;
+    color: #862D42;
+    font-size: 0.9rem;
+}
+.logout-link {
     color: #fff;
     background-color: #E67A90;
     padding: 6px 12px;
     border-radius: 4px;
     font-size: 0.9rem;
+    text-decoration: none;
 }
 
-/* Mensaje */
+/* =========================================
+   MESSAGE
+========================================= */
 .message {
     background-color: #FFF2F5;
     color: #862D42;
@@ -78,17 +103,81 @@ html, body {
     border-bottom: 1px solid #FFC9D3;
 }
 
-/* Agenda container */
-.agenda-container {
+/* =========================================
+   AUTH FORMS (Login & Register)
+========================================= */
+.auth-container {
     display: flex;
-    height: calc(100% - 80px); /* approximate header + message height */
+    gap: 20px;
+    padding: 20px;
+    height: calc(100% - 60px); /* adjust if needed */
+}
+.auth-container > div {
+    flex: 1;
+    background-color: #FFF;
+    border-radius: 6px;
+    padding: 20px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.1);
+}
+.auth-container h2 {
+    margin-bottom: 10px;
+    color: #862D42;
+}
+.auth-container label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+    color: #862D42;
+}
+.auth-container input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px dashed #E67A90;
+    background-color: transparent;
+    padding: 6px;
+    margin-top: 5px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: #862D42;
+    outline: none;
+}
+.auth-container input:focus {
+    background-color: #FFF7F9;
+}
+.auth-container button {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background-color: #E67A90;
+    color: #FFF;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
+}
+.auth-container button:hover {
+    background-color: #CC5F78;
 }
 
-/* Left panel: Time Table */
+/* =========================================
+   MAIN AGENDA CONTAINER (day view)
+========================================= */
+.agenda-container {
+    display: flex;
+    height: calc(100% - 80px); /* approx for top header + message */
+}
 .left-panel {
     flex: 2;
     overflow-y: auto;
 }
+.right-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background-color: rgba(255,255,255,0.6);
+}
+
+/* Time-table */
 .time-table {
     width: 100%;
     border-collapse: collapse;
@@ -109,35 +198,26 @@ html, body {
     vertical-align: top;
     border-bottom: 1px solid #FFD9E1;
 }
-
-/* Hour label */
 .slot-label {
     width: 60px;
     font-weight: bold;
     color: #862D42;
     text-align: center;
 }
-
-/* Color input cell */
 .slot-color {
     width: 60px;
     text-align: center;
 }
-
-/* Group cell */
 .slot-group {
-    position: relative; /* needed for pseudo-elements */
-    width: 40px;        /* enough space for line if needed */
+    position: relative;
+    width: 40px;
     text-align: center;
-    cursor: pointer;    /* let user see it's clickable */
+    cursor: pointer;
 }
-
-/* Hide the actual checkbox */
 .slot-group-input {
     display: none;
 }
-
-/* Basic text area for content */
+/* Description area */
 .slot-input {
     width: 100%;
     min-height: 40px;
@@ -155,13 +235,9 @@ html, body {
     background-color: #FFF7F9;
 }
 
-/* Right panel: daily data */
-.right-panel {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    background-color: rgba(255,255,255,0.6);
-}
+/* =========================================
+   DAILY DATA (right panel)
+========================================= */
 .right-panel h2 {
     color: #862D42;
     margin-bottom: 10px;
@@ -213,86 +289,160 @@ html, body {
 .hours-grid input:focus {
     background-color: #FFF7F9;
 }
-
-/* Auth forms */
-.auth-container {
-    display: flex;
-    gap: 20px;
-    padding: 20px;
-    height: calc(100% - 60px);
-}
-.auth-container > div {
-    flex: 1;
-    background-color: #FFF;
-    border-radius: 6px;
-    padding: 20px;
-    box-shadow: 0 0 6px rgba(0,0,0,0.1);
-}
-.auth-container label {
-    display: block;
-    margin-top: 10px;
-    font-weight: bold;
-    color: #862D42;
-}
-.auth-container input {
-    width: 100%;
-    border: none;
-    border-bottom: 1px dashed #E67A90;
-    background-color: transparent;
-    padding: 6px;
-    margin-top: 5px;
-    font-family: inherit;
-    font-size: 0.9rem;
-    color: #862D42;
-    outline: none;
-}
-.auth-container input:focus {
-    background-color: #FFF7F9;
-}
-.auth-container button {
+.exercise-row {
+    display: flex; 
+    gap: 15px; 
     margin-top: 15px;
-    padding: 10px 15px;
-    background-color: #E67A90;
-    color: #FFF;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 1rem;
 }
-.auth-container button:hover {
-    background-color: #CC5F78;
+.exercise-row > div {
+    flex: 1;
 }
 
-/* Month view styling */
+/* =========================================
+   MONTH VIEW TABLE
+========================================= */
+.month-container {
+    padding: 20px;
+}
+.month-table {
+    width: 100%;
+    background-color: #FFF;
+    border-collapse: collapse;
+}
+.month-table thead th {
+    background-color: #FFC8D1;
+    color: #862D42;
+    padding: 8px;
+    text-align: center;
+    font-weight: bold;
+}
 .month-table td {
-    width: 100px;
+    border: 1px solid #FFD9E1;
+    height: 100px;
+    vertical-align: top;
+    padding: 4px;
 }
 
-/* GROUPING VISUAL: 
-   We'll add a vertical "bar" in .slot-group cells
-   when consecutive rows are checked. We'll also
-   handle .group-start and .group-end to create top/bottom gaps. */
+/* =========================================
+   GROUPING VISUAL: consecutive checkboxes 
+========================================= */
 .slot-group.grouped::before {
     content: "";
     position: absolute;
-    left: 50%; 
-    top: 0; 
+    left: 50%;
+    top: 0;
     bottom: 0;
     width: 2px;
     background-color: #862D42;
 }
-
-/* The first grouped slot - add some top gap. */
 .slot-group.grouped.group-start::before {
     top: 8px;
 }
-
-/* The last grouped slot - add some bottom gap. */
 .slot-group.grouped.group-end::before {
     bottom: 8px;
 }
 
-/* If a row is both the first and last in a group (single-row group),
-   it effectively sets top:8px and bottom:8px, creating a short vertical line. */
+/* =========================================
+   RESPONSIVE BREAKPOINTS
+========================================= */
+
+/* -----------------------------------------
+   MOBILE: up to 767px
+   - Single column for auth (login top, register below)
+   - Single column for agenda
+----------------------------------------- */
+@media screen and (max-width: 767px) {
+    /* Auth single column */
+    .auth-container {
+        flex-direction: column;
+        height: auto; /* let it grow */
+    }
+    .auth-container > div {
+        width: 100% !important;
+        margin-bottom: 20px;
+    }
+
+    /* Agenda single column */
+    .agenda-container {
+        flex-direction: column;
+        height: auto;
+    }
+    .left-panel, 
+    .right-panel {
+        flex: none;
+        width: 100% !important;
+        height: auto;
+        margin-bottom: 20px;
+        overflow: visible;
+    }
+
+    /* Possibly smaller fonts on mobile */
+    .time-table td, 
+    .time-table th {
+        font-size: 0.85rem;
+        padding: 4px;
+    }
+    .slot-input {
+        font-size: 0.85rem;
+    }
+    .right-panel label {
+        font-size: 0.9rem;
+    }
+    .daily-data {
+        font-size: 0.85rem;
+    }
+    .hours-grid input {
+        font-size: 0.85rem;
+    }
+    .month-table {
+        font-size: 0.9rem;
+        table-layout: auto;
+    }
+    .month-table td {
+        width: auto; /* allow shrink or horizontal scroll */
+    }
+}
+
+/* -----------------------------------------
+   TABLET: 768px to 1024px
+   - Keep 2 columns, can adjust widths
+----------------------------------------- */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+    .agenda-container {
+        flex-direction: row;
+        height: auto;
+    }
+    /* Example: 60% left, 40% right */
+    .left-panel {
+        flex: none;
+        width: 60%;
+        overflow-y: auto;
+    }
+    .right-panel {
+        flex: none;
+        width: 40%;
+        overflow-y: auto;
+    }
+
+    .time-table td, 
+    .time-table th {
+        font-size: 0.9rem;
+        padding: 6px;
+    }
+    .slot-input {
+        font-size: 0.9rem;
+    }
+    .right-panel label {
+        font-size: 1rem;
+    }
+    .daily-data {
+        font-size: 0.95rem;
+    }
+    .hours-grid input {
+        font-size: 0.9rem;
+    }
+    .month-table {
+        font-size: 0.95rem;
+    }
+}
 
