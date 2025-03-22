@@ -328,6 +328,7 @@ select {
     height: 100px;
     vertical-align: top;
     padding: 4px;
+    width: 100px;
 }
 
 /* =========================================
