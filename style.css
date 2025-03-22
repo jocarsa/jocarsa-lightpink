@@ -9,36 +9,36 @@
     box-sizing: border-box;
 }
 
-/* 1) Prevent iOS from auto-scaling text */
+/* Prevent iOS from auto-scaling text if font < 16px */
 html, body {
     width: 100%;
     height: 100%;
     font-family: Ubuntu, Helvetica, Arial, sans-serif;
     background: linear-gradient(to bottom right, #FFD6DD, lightpink);
-    -webkit-text-size-adjust: 100%; /* iOS: disable text auto-adjust */
+    -webkit-text-size-adjust: 100%;
 }
 
-/* 2) Force inputs to be at least 16px to avoid iOS zoom on focus */
+/* Force inputs to be at least 16px to avoid iOS zoom on focus */
 input,
 textarea,
 select {
     font-size: 16px !important;
     line-height: 1.4;
 }
-/* If not already in your <head>, ensure you have:
-   <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-*/
 
 /* =========================================
-   HEADER (vertical column layout)
+   HEADER
+   - By default on desktop: flex row
+   - On mobile (max-width: 767px): flex column
 ========================================= */
 .top-header {
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* default: row on desktop */
     align-items: center;
+    justify-content: space-between;
     background-color: lightpink;
     padding: 10px 20px;
-    gap: 10px; /* space between elements */
+    gap: 10px; /* optional spacing between children */
 }
 .header-title h1 {
     font-size: 1.5rem;
@@ -52,20 +52,17 @@ select {
     width: 50px;
     margin-right: 10px;
 }
-
-/* Container for user name, date nav, etc. */
+/* container for user name + date nav + etc. */
 .header-userinfo {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 20px; /* space between elements inside userinfo */
 }
 .header-userinfo .welcome {
     font-weight: bold;
     color: #862D42;
     font-size: 1rem;
 }
-/* Day nav (prev/next) */
 .date-nav {
     display: flex;
     align-items: center;
@@ -85,7 +82,6 @@ select {
     color: #862D42;
     font-weight: bold;
 }
-/* Month/Day toggle + Logout */
 .header-links {
     display: flex;
     gap: 15px;
@@ -148,7 +144,7 @@ select {
     padding: 6px;
     margin-top: 5px;
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.9rem; /* effectively 16px forced by the universal rule above */
     color: #862D42;
     outline: none;
 }
@@ -171,7 +167,7 @@ select {
 }
 
 /* =========================================
-   MAIN AGENDA CONTAINER (day view)
+   MAIN AGENDA CONTAINER (Day View)
 ========================================= */
 .agenda-container {
     display: flex;
@@ -247,7 +243,7 @@ select {
 }
 
 /* =========================================
-   DAILY DATA (right panel)
+   DAILY DATA (Right Panel)
 ========================================= */
 .right-panel h2 {
     color: #862D42;
@@ -357,13 +353,25 @@ select {
    RESPONSIVE BREAKPOINTS
 ========================================= */
 
-/* -----------------------------------------
-   MOBILE: up to 767px
-   - Single column for auth (login top, register below)
-   - Single column for agenda
+/* MOBILE: up to 767px
+   - Make .top-header a column
+   - .header-userinfo also a column
+   - single-column for auth forms, etc.
 ----------------------------------------- */
 @media screen and (max-width: 767px) {
-    /* Auth single column */
+    /* HEADER becomes column */
+    .top-header {
+        flex-direction: column;
+        align-items: center;
+    }
+    .header-userinfo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* AUTH single column */
     .auth-container {
         flex-direction: column;
         height: auto; /* let it grow */
@@ -414,9 +422,9 @@ select {
     }
 }
 
-/* -----------------------------------------
-   TABLET: 768px to 1024px
-   - Keep 2 columns, can adjust widths
+/* TABLET: 768px to 1024px 
+   - 2 columns for the agenda 
+   - possibly adjust widths 
 ----------------------------------------- */
 @media screen and (min-width: 768px) and (max-width: 1024px) {
     .agenda-container {

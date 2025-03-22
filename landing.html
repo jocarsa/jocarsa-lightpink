@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>jocarsa | lightpink - Tu agenda diaria en línea</title>
+  <style>
+    /* ======= BASE / RESET ======= */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      font-family: "Ubuntu", sans-serif;
+      color: #862D42;
+      background: #FFF0F3;
+    }
+    img { max-width: 100%; }
+
+    a {
+      text-decoration: none;
+      color: #862D42;
+    }
+    /* Prevent iOS zoom on small font fields (if any) */
+    html, body {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ======= HEADER / HERO ======= */
+    header {
+      background: linear-gradient(to right, #FFD6DD, #FFCBD6);
+      padding: 20px;
+      text-align: center;
+    }
+    .logo-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .logo-title img {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+    }
+    .logo-title h1 {
+      font-size: 1.8rem;
+      color: #862D42;
+    }
+
+    .hero-heading {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .hero-subheading {
+      font-size: 1rem;
+      color: #862D42;
+      max-width: 600px;
+      margin: 0 auto 20px auto;
+      line-height: 1.5;
+    }
+    .cta-button {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 12px 20px;
+      background-color: #E67A90;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 4px;
+      transition: background-color 0.3s ease;
+    }
+    .cta-button:hover {
+      background-color: #cc5f78;
+    }
+
+    /* ======= FEATURES SECTION ======= */
+    .features-section {
+      padding: 40px 20px;
+      text-align: center;
+      background-color: #FFF8F9;
+    }
+    .features-section h2 {
+      font-size: 1.6rem;
+      margin-bottom: 20px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .feature-card {
+      background: #fff;
+      border-radius: 6px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .feature-card img {
+      width: 60px;
+      margin-bottom: 15px;
+    }
+    .feature-card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      color: #862D42;
+    }
+    .feature-card p {
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    /* ======= HOW IT WORKS SECTION ======= */
+    .how-it-works {
+      padding: 40px 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .how-it-works h2 {
+      text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 30px;
+    }
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .step {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .step-icon {
+      flex: 0 0 60px;
+      text-align: center;
+      font-size: 2rem;
+      background-color: #FFD6DD;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #862D42;
+      font-weight: bold;
+    }
+    .step-info {
+      flex: 1;
+    }
+    .step-info h3 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      color: #862D42;
+    }
+    .step-info p {
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    /* ======= PRICING / CTA SECTION ======= */
+    .pricing-cta {
+      background-color: #FFD6DD;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .pricing-cta h2 {
+      font-size: 1.6rem;
+      margin-bottom: 15px;
+    }
+    .pricing-cta p {
+      font-size: 1rem;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      max-width: 600px;
+      margin: 0 auto 20px auto;
+    }
+
+    /* ======= FOOTER ======= */
+    footer {
+      background-color: #FFCBD6;
+      padding: 20px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #862D42;
+    }
+    footer a {
+      color: #862D42;
+      font-weight: bold;
+    }
+
+    /* ======= RESPONSIVE MEDIA QUERIES ======= */
+    @media screen and (max-width: 768px) {
+      .step {
+        flex-direction: column;
+        align-items: center;
+      }
+      .step-icon {
+        margin-bottom: 10px;
+      }
+      .hero-heading {
+        font-size: 1.6rem;
+      }
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ======= HEADER / HERO ======= -->
+<header>
+  <div class="logo-title">
+    <img src="lightpink.png" alt="logo">
+    <h1>jocarsa | lightpink</h1>
+  </div>
+  <h2 class="hero-heading">Tu agenda diaria en línea</h2>
+  <p class="hero-subheading">
+    Planifica tus días, registra tus actividades y descubre una 
+    forma más ágil y divertida de organizar tu vida personal. 
+    ¡Todo en un solo lugar!
+  </p>
+  <a href="#" class="cta-button">Comienza Gratis</a>
+</header>
+
+<!-- ======= FEATURES SECTION ======= -->
+<section class="features-section">
+  <h2>Beneficios que te encantarán</h2>
+  <div class="features-grid">
+    <div class="feature-card">
+      <img src="https://img.icons8.com/ios-filled/512/calendar--v1.png" 
+           alt="Calendar Icon"/>
+      <h3>Planificación Diaria & Mensual</h3>
+      <p>
+        Visualiza tu día al detalle o tu mes completo para no perderte 
+        ninguna cita o recordatorio importante.
+      </p>
+    </div>
+    <div class="feature-card">
+      <img src="https://img.icons8.com/ios-filled/512/checklist.png" 
+           alt="Checklist Icon"/>
+      <h3>Listas de Tareas & Notas</h3>
+      <p>
+        Administra tus tareas diarias y anota tus ideas. Mantén todo 
+        bajo control y nunca olvides nada.
+      </p>
+    </div>
+    <div class="feature-card">
+      <img src="https://img.icons8.com/ios-filled/512/like--v1.png" 
+           alt="Like Icon"/>
+      <h3>Cuida tu Bienestar</h3>
+      <p>
+        Lleva registro de tus horas de sueño, tiempo de ejercicio, 
+        agua bebida y más, para mejorar tu salud y tus hábitos diarios.
+      </p>
+    </div>
+    <div class="feature-card">
+      <img src="https://img.icons8.com/ios-filled/512/online-support.png" 
+           alt="Support Icon"/>
+      <h3>Acceso en Cualquier Dispositivo</h3>
+      <p>
+        Disfruta de la misma experiencia fluida desde tu ordenador, 
+        tableta o smartphone, sin complicaciones.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ======= HOW IT WORKS ======= -->
+<section class="how-it-works">
+  <h2>¿Cómo Funciona?</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-icon">1</div>
+      <div class="step-info">
+        <h3>Crea una Cuenta</h3>
+        <p>
+          Regístrate con tu nombre y correo electrónico, y empieza 
+          a disfrutar de tu agenda digital en pocos minutos.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-icon">2</div>
+      <div class="step-info">
+        <h3>Personaliza tu Día</h3>
+        <p>
+          Añade tus tareas, compromisos, recordatorios y notas.
+          Elige colores y categorías para cada actividad.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-icon">3</div>
+      <div class="step-info">
+        <h3>Registra tus Hábitos</h3>
+        <p>
+          Anota tus horas de sueño, tu menú diario, tu rutina de 
+          ejercicio y más. Visualiza tu progreso y motívate día a día.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= PRICING / CTA ======= -->
+<section class="pricing-cta">
+  <h2>¡Empieza Hoy Mismo!</h2>
+  <p>
+    Organizar tu día a día nunca fue tan fácil. 
+    Desde la planificación semanal hasta el registro 
+    de tus hábitos, <strong>jocarsa | lightpink</strong> 
+    te ayuda a vivir con menos estrés y más tranquilidad.
+  </p>
+  <a href="#" class="cta-button">Crear Mi Cuenta Gratis</a>
+</section>
+
+<!-- ======= FOOTER ======= -->
+<footer>
+  © <?php echo date("Y"); ?> jocarsa | lightpink. 
+  <br/>
+  <a href="#">Términos de Uso</a> &bull; 
+  <a href="#">Política de Privacidad</a> &bull; 
+  <a href="#">Contacto</a>
+</footer>
+
+</body>
+</html>
+
