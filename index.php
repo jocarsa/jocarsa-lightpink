@@ -425,6 +425,20 @@ if ($view === 'month') {
 
     <title>jocarsa | lightpink</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Standard Favicon -->
+    <link rel="icon" href="lightpink.png" type="image/x-icon">
+
+    <!-- PNG Favicon for Browsers -->
+    <link rel="icon" type="image/png" sizes="32x32" href="lightpink.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="lightpink.png">
+
+    <!-- Apple Touch Icon (iOS) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/lightpink.png">
+
+   
+
+    <!-- Theme Color for Chrome on Android -->
+    <meta name="theme-color" content="#ffffff">
 </head>
 <body>
 
