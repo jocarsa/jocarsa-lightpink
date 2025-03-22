@@ -354,11 +354,7 @@ select {
    RESPONSIVE BREAKPOINTS
 ========================================= */
 
-/* MOBILE: up to 767px
-   - Make .top-header a column
-   - .header-userinfo also a column
-   - single-column for auth forms, etc.
------------------------------------------ */
+/* MOBILE: up to 767px */
 @media screen and (max-width: 767px) {
     /* HEADER becomes column */
     .top-header {
@@ -419,20 +415,20 @@ select {
         table-layout: auto;
     }
     .month-table td {
-        width: auto; /* allow shrink or horizontal scroll */
+        width: auto;
     }
+
+    /* Hide desktop month view and show mobile version */
+    .month-desktop { display: none; }
+    .month-mobile { display: block; }
 }
 
-/* TABLET: 768px to 1024px 
-   - 2 columns for the agenda 
-   - possibly adjust widths 
------------------------------------------ */
+/* TABLET: 768px to 1024px */
 @media screen and (min-width: 768px) and (max-width: 1024px) {
     .agenda-container {
         flex-direction: row;
         height: auto;
     }
-    /* Example: 60% left, 40% right */
     .left-panel {
         flex: none;
         width: 60%;
@@ -464,5 +460,15 @@ select {
     .month-table {
         font-size: 0.95rem;
     }
+
+    /* Show desktop month view, hide mobile version */
+    .month-desktop { display: block; }
+    .month-mobile { display: none; }
+}
+
+/* DESKTOP: above 1024px */
+@media screen and (min-width: 1025px) {
+    .month-desktop { display: block; }
+    .month-mobile { display: none; }
 }
 

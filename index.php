@@ -388,30 +388,30 @@ if ($view === 'month') {
     if (isset($_SESSION['user_id'])) {
         $user_id = $_SESSION['user_id'];
         $slotStmt = $db->prepare("
-				 SELECT date, time_slot, description
-				 FROM day_slots
-				 WHERE user_id = :u
-					AND date >= :start
-					AND date <= :end
-				 ORDER BY date, time_slot
-			");
-			$slotStmt->bindValue(':u', $user_id);
-			$slotStmt->bindValue(':start', $monthStart);
-			$slotStmt->bindValue(':end',   $monthEnd);
-			$slotRes = $slotStmt->execute();
-			while ($row = $slotRes->fetchArray(SQLITE3_ASSOC)) {
-				 // skip empty descriptions
-				 if (!empty(trim($row['description']))) {
-					  $day = $row['date'];
-					  if (!isset($monthEvents[$day])) {
-						   $monthEvents[$day] = [];
-					  }
-					  $monthEvents[$day][] = [
-						   'time_slot'   => $row['time_slot'],
-						   'description' => $row['description']
-					  ];
-				 }
-			}
+             SELECT date, time_slot, description
+             FROM day_slots
+             WHERE user_id = :u
+             AND date >= :start
+             AND date <= :end
+             ORDER BY date, time_slot
+        ");
+        $slotStmt->bindValue(':u', $user_id);
+        $slotStmt->bindValue(':start', $monthStart);
+        $slotStmt->bindValue(':end',   $monthEnd);
+        $slotRes = $slotStmt->execute();
+        while ($row = $slotRes->fetchArray(SQLITE3_ASSOC)) {
+             // skip empty descriptions
+             if (!empty(trim($row['description']))) {
+                  $day = $row['date'];
+                  if (!isset($monthEvents[$day])) {
+                       $monthEvents[$day] = [];
+                  }
+                  $monthEvents[$day][] = [
+                       'time_slot'   => $row['time_slot'],
+                       'description' => $row['description']
+                  ];
+             }
+        }
     }
 }
 
@@ -437,8 +437,6 @@ if ($view === 'month') {
 
     <!-- Apple Touch Icon (iOS) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/lightpink.png">
-
-   
 
     <!-- Theme Color for Chrome on Android -->
     <meta name="theme-color" content="#ffffff">
@@ -482,7 +480,9 @@ if ($view === 'month') {
                 <?php endif; ?>
 
                 <a class="logout-link" href="index.php?action=logout"
-                   title="Cerrar Sesión">Salir</a>
+                   title="Cerrar Sesión" onclick="localStorage.removeItem('rememberedUser'); localStorage.removeItem('rememberedPassword');">
+                   Salir
+                </a>
             </div>
         </div>
     <?php endif; ?>
@@ -533,6 +533,54 @@ if ($view === 'month') {
         </div>
     </div>
 
+    <!-- Auto-login using localStorage if credentials are stored -->
+    <script>
+    // If not logged in, check for stored credentials and auto-submit login
+    (function(){
+        var storedUser = localStorage.getItem('rememberedUser');
+        var storedPass = localStorage.getItem('rememberedPassword');
+        if (storedUser && storedPass) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'index.php';
+            
+            var actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'login';
+            form.appendChild(actionInput);
+            
+            var usernameInput = document.createElement('input');
+            usernameInput.type = 'hidden';
+            usernameInput.name = 'username';
+            usernameInput.value = storedUser;
+            form.appendChild(usernameInput);
+            
+            var passwordInput = document.createElement('input');
+            passwordInput.type = 'hidden';
+            passwordInput.name = 'password';
+            passwordInput.value = storedPass;
+            form.appendChild(passwordInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    })();
+
+    // On login form submission, store credentials in localStorage
+    (function(){
+        var loginForm = document.querySelector('.login-form form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', function(){
+                var userInput = loginForm.querySelector('input[name="username"]').value;
+                var passInput = loginForm.querySelector('input[name="password"]').value;
+                localStorage.setItem('rememberedUser', userInput);
+                localStorage.setItem('rememberedPassword', passInput);
+            });
+        }
+    })();
+    </script>
+
 <?php else: ?>
     <!-- ****************************** -->
     <!-- VISTA MENSUAL (CALENDARIO) -->
@@ -546,7 +594,8 @@ if ($view === 'month') {
         $monthName        = strftime('%B', $firstDayOfMonth);
         ?>
 
-        <div class="month-container" style="padding:20px;">
+        <!-- Desktop Version (Grid Table) -->
+        <div class="month-desktop" style="padding:20px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
                 <a style="text-decoration:none; font-size:1.2rem;" 
                    href="?view=month&prev=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&lt;&lt;</a>
@@ -626,6 +675,38 @@ if ($view === 'month') {
                 ?>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Version (Vertical List) -->
+        <div class="month-mobile" style="padding:20px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                <a style="text-decoration:none; font-size:1.2rem;" 
+                   href="?view=month&prev=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&lt;&lt;</a>
+                
+                <div style="font-weight:bold; font-size:1.1rem;">
+                    <?php echo ucfirst($monthName) . " " . $year; ?>
+                </div>
+
+                <a style="text-decoration:none; font-size:1.2rem;" 
+                   href="?view=month&next=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&gt;&gt;</a>
+            </div>
+            <?php
+            for ($day = 1; $day <= $daysInMonth; $day++) {
+                $currentCellDate = sprintf('%04d-%02d-%02d', $year, $month, $day);
+                echo '<div class="month-mobile-day" style="border:1px solid #FFD9E1; padding: 10px; margin-bottom: 5px;">';
+                echo '<div class="month-mobile-date" style="font-weight:bold; margin-bottom:5px;">';
+                echo "<a href='?view=day&date=$currentCellDate' style='text-decoration:none; color:#862D42;'>$day</a>";
+                echo '</div>';
+                if (isset($monthEvents[$currentCellDate])) {
+                    foreach ($monthEvents[$currentCellDate] as $ev) {
+                        $t = htmlspecialchars($ev['time_slot']);
+                        $d = htmlspecialchars($ev['description']);
+                        echo "<div style='font-size:0.85rem; margin-bottom:4px;'><a href='?view=day&date=$currentCellDate' style='color:#862D42; text-decoration:none;'>$t - $d</a></div>";
+                    }
+                }
+                echo '</div>';
+            }
+            ?>
         </div>
 
     <!-- ****************************** -->
