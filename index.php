@@ -388,27 +388,30 @@ if ($view === 'month') {
     if (isset($_SESSION['user_id'])) {
         $user_id = $_SESSION['user_id'];
         $slotStmt = $db->prepare("
-            SELECT date, time_slot, description
-            FROM day_slots
-            WHERE user_id = :u
-              AND date >= :start
-              AND date <= :end
-            ORDER BY date, time_slot
-        ");
-        $slotStmt->bindValue(':u', $user_id);
-        $slotStmt->bindValue(':start', $monthStart);
-        $slotStmt->bindValue(':end',   $monthEnd);
-        $slotRes = $slotStmt->execute();
-        while ($row = $slotRes->fetchArray(SQLITE3_ASSOC)) {
-            $day = $row['date'];
-            if (!isset($monthEvents[$day])) {
-                $monthEvents[$day] = [];
-            }
-            $monthEvents[$day][] = [
-                'time_slot'   => $row['time_slot'],
-                'description' => $row['description']
-            ];
-        }
+				 SELECT date, time_slot, description
+				 FROM day_slots
+				 WHERE user_id = :u
+					AND date >= :start
+					AND date <= :end
+				 ORDER BY date, time_slot
+			");
+			$slotStmt->bindValue(':u', $user_id);
+			$slotStmt->bindValue(':start', $monthStart);
+			$slotStmt->bindValue(':end',   $monthEnd);
+			$slotRes = $slotStmt->execute();
+			while ($row = $slotRes->fetchArray(SQLITE3_ASSOC)) {
+				 // skip empty descriptions
+				 if (!empty(trim($row['description']))) {
+					  $day = $row['date'];
+					  if (!isset($monthEvents[$day])) {
+						   $monthEvents[$day] = [];
+					  }
+					  $monthEvents[$day][] = [
+						   'time_slot'   => $row['time_slot'],
+						   'description' => $row['description']
+					  ];
+				 }
+			}
     }
 }
 
