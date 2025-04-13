@@ -2,12 +2,12 @@
 session_start();
 
 // ----------------------------------------------------------------------
-// 1. Conectar / Iniciar la base de datos SQLite
+// 1. Connect to / Start the SQLite database
 // ----------------------------------------------------------------------
 $db = new SQLite3('../databases/lightpink.db');
 
 // ----------------------------------------------------------------------
-// 2. Crear tablas si no existen
+// 2. Create tables if not exist
 // ----------------------------------------------------------------------
 $db->exec("
     CREATE TABLE IF NOT EXISTS users (
@@ -54,7 +54,7 @@ $db->exec("
 ");
 
 // ----------------------------------------------------------------------
-// 3. Crear usuario inicial (si no existe)
+// 3. Create initial user if not exists
 // ----------------------------------------------------------------------
 $initialFullName = "Jose Vicente Carratalá";
 $initialEmail    = "info@josevicentecarratala.com";
@@ -72,7 +72,7 @@ $stmt->bindValue(':password', $initialPassword);
 $stmt->execute();
 
 // ----------------------------------------------------------------------
-// 4. Registro
+// 4. Registration
 // ----------------------------------------------------------------------
 if (isset($_POST['action']) && $_POST['action'] === 'register') {
     $full_name = trim($_POST['full_name']);
@@ -138,7 +138,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 }
 
 // ----------------------------------------------------------------------
-// 7. Manejo de AJAX (guardar datos sin recargar)
+// 7. AJAX Handling (Save data without reload)
 // ----------------------------------------------------------------------
 if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
     header('Content-Type: application/json; charset=utf-8');
@@ -148,7 +148,7 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
     }
     $user_id = $_SESSION['user_id'];
 
-    // A) Actualizar ranura horaria (slots)
+    // A) Update time slot (day_slots)
     if ($_POST['action'] === 'update_slot') {
         $date       = $_POST['date']       ?? date('Y-m-d');
         $time_slot  = $_POST['time_slot']  ?? '';
@@ -200,7 +200,7 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         exit;
     }
 
-    // B) Actualizar daily_data
+    // B) Update daily_data
     if ($_POST['action'] === 'update_daily_data') {
         $date  = $_POST['date'] ?? date('Y-m-d');
         $field = $_POST['field'] ?? '';
@@ -237,7 +237,7 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
             $upd->bindValue(':id', $row['id']);
             $upd->execute();
         } else {
-            // Insert
+            // Insert with default values and the updated field
             $insFields = [
                 'notes'            => '',
                 'checklist'        => '',
@@ -285,34 +285,32 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         exit;
     }
 
-    // Acción no válida
+    // Invalid action
     echo json_encode(['status' => 'error', 'message' => 'Acción no válida.']);
     exit;
 }
 
 // ----------------------------------------------------------------------
-// 8. Determinar vista: 'day' (diaria) o 'month' (mensual)
+// 8. Determine view: 'day', 'week', or 'month'
 // ----------------------------------------------------------------------
 $view = isset($_GET['view']) ? $_GET['view'] : 'day';
 
 // ----------------------------------------------------------------------
-// 9. Lógica para la vista diaria
+// 9. Logic for view rendering
 // ----------------------------------------------------------------------
-$currentDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
-
 if ($view === 'day') {
-    // Navegación anterior
+    $currentDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+    // Navigation: previous/next
     if (isset($_GET['prev']) && $_GET['prev'] == 1) {
         $time = strtotime($currentDate) - 86400;
         $currentDate = date('Y-m-d', $time);
     }
-    // Navegación siguiente
     if (isset($_GET['next']) && $_GET['next'] == 1) {
         $time = strtotime($currentDate) + 86400;
         $currentDate = date('Y-m-d', $time);
     }
 
-    // Recuperar data
+    // Retrieve daily_data and day_slots for the current day
     $dailyData   = [];
     $timeSlots   = [];
     $daySlotData = [];
@@ -320,7 +318,7 @@ if ($view === 'day') {
     if (isset($_SESSION['user_id'])) {
         $user_id = $_SESSION['user_id'];
 
-        // a) daily_data
+        // a) daily_data query
         $stmt = $db->prepare("
             SELECT * FROM daily_data 
             WHERE user_id = :u 
@@ -331,14 +329,14 @@ if ($view === 'day') {
         $res = $stmt->execute();
         $dailyData = $res->fetchArray(SQLITE3_ASSOC);
 
-        // b) Generar slots desde 06:00 a 24:00 cada 30'
+        // b) Generate slots from 06:00 to 24:00 in 30-minute intervals
         $start = strtotime("06:00");
         $end   = strtotime("24:00");
         for ($t = $start; $t < $end; $t += 1800) {
             $timeSlots[] = date('H:i', $t);
         }
 
-        // c) day_slots (ya existentes)
+        // c) Retrieve existing day_slots
         $slotStmt = $db->prepare("
             SELECT time_slot, description, color_tag, group_flag
             FROM day_slots
@@ -359,20 +357,15 @@ if ($view === 'day') {
     }
 }
 
-// ----------------------------------------------------------------------
-// 10. Lógica para la vista mensual
-// ----------------------------------------------------------------------
 if ($view === 'month') {
     $year  = isset($_GET['year'])  ? (int)$_GET['year']  : date('Y');
     $month = isset($_GET['month']) ? (int)$_GET['month'] : date('n');
 
-    // Mes anterior
     if (isset($_GET['prev']) && $_GET['prev'] == 1) {
         $prevMonth = strtotime("-1 month", strtotime("$year-$month-01"));
         $year  = date('Y', $prevMonth);
         $month = date('n', $prevMonth);
     }
-    // Mes siguiente
     if (isset($_GET['next']) && $_GET['next'] == 1) {
         $nextMonth = strtotime("+1 month", strtotime("$year-$month-01"));
         $year  = date('Y', $nextMonth);
@@ -400,7 +393,6 @@ if ($view === 'month') {
         $slotStmt->bindValue(':end',   $monthEnd);
         $slotRes = $slotStmt->execute();
         while ($row = $slotRes->fetchArray(SQLITE3_ASSOC)) {
-             // skip empty descriptions
              if (!empty(trim($row['description']))) {
                   $day = $row['date'];
                   if (!isset($monthEvents[$day])) {
@@ -415,74 +407,132 @@ if ($view === 'month') {
     }
 }
 
-// ----------------------------------------------------------------------
-// 11. Renderizar HTML
-// ----------------------------------------------------------------------
+if ($view === 'week') {
+    // Use the provided date or current date as reference.
+    $currentDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+    
+    // Compute week boundaries (assuming week starts on Sunday)
+    $timestamp = strtotime($currentDate);
+    $weekday   = date('w', $timestamp);
+    $weekStartTimestamp = strtotime("-{$weekday} days", $timestamp);
+    $weekEndTimestamp   = strtotime("+".(6 - $weekday)." days", $timestamp);
+    $weekStart = date('Y-m-d', $weekStartTimestamp);
+    $weekEnd   = date('Y-m-d', $weekEndTimestamp);
+
+    // Navigation for week view
+    if (isset($_GET['prev']) && $_GET['prev'] == 1) {
+         // Move one week back.
+         $newDate = date('Y-m-d', strtotime("$weekStart -7 days"));
+         $currentDate = $newDate;
+         $timestamp = strtotime($currentDate);
+         $weekday   = date('w', $timestamp);
+         $weekStartTimestamp = strtotime("-{$weekday} days", $timestamp);
+         $weekEndTimestamp   = strtotime("+".(6 - $weekday)." days", $timestamp);
+         $weekStart = date('Y-m-d', $weekStartTimestamp);
+         $weekEnd   = date('Y-m-d', $weekEndTimestamp);
+    }
+    if (isset($_GET['next']) && $_GET['next'] == 1) {
+         // Move one week forward.
+         $newDate = date('Y-m-d', strtotime("$weekEnd +1 day"));
+         $currentDate = $newDate;
+         $timestamp = strtotime($currentDate);
+         $weekday   = date('w', $timestamp);
+         $weekStartTimestamp = strtotime("-{$weekday} days", $timestamp);
+         $weekEndTimestamp   = strtotime("+".(6 - $weekday)." days", $timestamp);
+         $weekStart = date('Y-m-d', $weekStartTimestamp);
+         $weekEnd   = date('Y-m-d', $weekEndTimestamp);
+    }
+
+    // Retrieve events for the week
+    $weeklyEvents = [];
+    if (isset($_SESSION['user_id'])) {
+        $user_id = $_SESSION['user_id'];
+        $stmt = $db->prepare("
+            SELECT * FROM day_slots 
+             WHERE user_id = :u 
+               AND date >= :start
+               AND date <= :end
+             ORDER BY date, time_slot
+        ");
+        $stmt->bindValue(':u', $user_id);
+        $stmt->bindValue(':start', $weekStart);
+        $stmt->bindValue(':end', $weekEnd);
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $date = $row['date'];
+            $time = $row['time_slot'];
+            if (!isset($weeklyEvents[$date])) {
+                $weeklyEvents[$date] = [];
+            }
+            $weeklyEvents[$date][$time] = [
+                'description' => $row['description'],
+                'color_tag'   => $row['color_tag'],
+                'group_flag'  => $row['group_flag']
+            ];
+        }
+    }
+
+    // Generate hourly slots for the weekly view (00:00 to 23:00)
+    $timeSlots = [];
+    for ($h = 0; $h < 24; $h++) {
+         $timeSlots[] = sprintf('%02d:00', $h);
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8"/>
-    <!-- IMPORTANT for mobile responsiveness -->
+    <!-- Mobile responsiveness -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>jocarsa | lightpink</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Standard Favicon -->
     <link rel="icon" href="lightpink.png" type="image/x-icon">
-
-    <!-- PNG Favicon for Browsers -->
     <link rel="icon" type="image/png" sizes="32x32" href="lightpink.png">
     <link rel="icon" type="image/png" sizes="16x16" href="lightpink.png">
-
-    <!-- Apple Touch Icon (iOS) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/lightpink.png">
-
-    <!-- Theme Color for Chrome on Android -->
     <meta name="theme-color" content="#ffffff">
 </head>
 <body>
 
 <header class="top-header">
-    <!-- 1. Corporate Identity -->
-    <div class="header-title">
-        <h1 title="Tu agenda diaria en línea">
+    <!-- Corporate Identity -->
+    <div class="header-title" title="Tu agenda diaria en línea">
+        <h1>
             <img src="lightpink.png" alt="logo">jocarsa | lightpink
         </h1>
     </div>
 
-    <!-- 2. If logged in, show user info, day nav, links -->
+    <!-- If logged in, show user info and navigation -->
     <?php if (isset($_SESSION['user_id'])): ?>
         <div class="header-userinfo">
-
             <!-- User Name -->
             <div class="welcome" title="Nombre del usuario conectado">
                 <?php echo htmlspecialchars($_SESSION['full_name']); ?>
             </div>
-
-            <!-- Day Navigation (only if day view) -->
+            <!-- Navigation for day view -->
             <?php if ($view === 'day'): ?>
                 <nav class="date-nav">
-                    <a href="?view=day&prev=1&date=<?php echo $currentDate; ?>" 
-                       title="Día anterior">&lt;</a>
+                    <a href="?view=day&prev=1&date=<?php echo $currentDate; ?>" title="Día anterior">&lt;</a>
                     <span><?php echo $currentDate; ?></span>
-                    <a href="?view=day&next=1&date=<?php echo $currentDate; ?>" 
-                       title="Día siguiente">&gt;</a>
+                    <a href="?view=day&next=1&date=<?php echo $currentDate; ?>" title="Día siguiente">&gt;</a>
                 </nav>
             <?php endif; ?>
 
-            <!-- Additional Links (month/day toggle, logout) -->
+            <!-- Additional Links: toggle between views and logout -->
             <div class="header-links">
                 <?php if ($view === 'day'): ?>
                     <a href="?view=month" title="Ver vista mensual">&#128197; Mes</a>
-                <?php else: ?>
+                    <a href="?view=week" title="Ver vista semanal">&#128337; Semana</a>
+                <?php elseif ($view === 'month'): ?>
                     <a href="?view=day" title="Ver vista diaria">&#128337; Día</a>
+                    <a href="?view=week" title="Ver vista semanal">&#128337; Semana</a>
+                <?php elseif ($view === 'week'): ?>
+                    <a href="?view=day" title="Ver vista diaria">&#128337; Día</a>
+                    <a href="?view=month" title="Ver vista mensual">&#128197; Mes</a>
                 <?php endif; ?>
-
-                <a class="logout-link" href="index.php?action=logout"
-                   title="Cerrar Sesión" onclick="localStorage.removeItem('rememberedUser'); localStorage.removeItem('rememberedPassword');">
-                   Salir
-                </a>
+                <a class="logout-link" href="index.php?action=logout" title="Cerrar Sesión" onclick="localStorage.removeItem('rememberedUser'); localStorage.removeItem('rememberedPassword');">Salir</a>
             </div>
         </div>
     <?php endif; ?>
@@ -495,7 +545,7 @@ if ($view === 'month') {
 <?php endif; ?>
 
 <?php if (!isset($_SESSION['user_id'])): ?>
-    <!-- Login & Registro -->
+    <!-- Login & Registration Forms -->
     <div class="auth-container">
         <div class="login-form">
             <h2>Iniciar Sesión</h2>
@@ -503,10 +553,8 @@ if ($view === 'month') {
                 <input type="hidden" name="action" value="login">
                 <label>Usuario</label>
                 <input type="text" name="username" required>
-                
                 <label>Contraseña</label>
                 <input type="password" name="password" required>
-                
                 <button type="submit">Entrar</button>
             </form>
         </div>
@@ -515,27 +563,21 @@ if ($view === 'month') {
             <h2>Registrarse</h2>
             <form method="POST">
                 <input type="hidden" name="action" value="register">
-                
                 <label>Nombre Completo</label>
                 <input type="text" name="full_name" required>
-                
                 <label>Email</label>
                 <input type="email" name="email" required>
-                
                 <label>Usuario</label>
                 <input type="text" name="username" required>
-                
                 <label>Contraseña</label>
                 <input type="password" name="password" required>
-                
                 <button type="submit">Crear Cuenta</button>
             </form>
         </div>
     </div>
 
-    <!-- Auto-login using localStorage if credentials are stored -->
+    <!-- Auto-login using localStorage -->
     <script>
-    // If not logged in, check for stored credentials and auto-submit login
     (function(){
         var storedUser = localStorage.getItem('rememberedUser');
         var storedPass = localStorage.getItem('rememberedPassword');
@@ -567,7 +609,6 @@ if ($view === 'month') {
         }
     })();
 
-    // On login form submission, store credentials in localStorage
     (function(){
         var loginForm = document.querySelector('.login-form form');
         if (loginForm) {
@@ -582,32 +623,24 @@ if ($view === 'month') {
     </script>
 
 <?php else: ?>
-    <!-- ****************************** -->
-    <!-- VISTA MENSUAL (CALENDARIO) -->
-    <!-- ****************************** -->
+
+    <!-- Monthly View -->
     <?php if ($view === 'month'): ?>
         <?php
-        $firstDayOfMonth  = isset($firstDayOfMonth) ? $firstDayOfMonth : strtotime(date('Y-m-01'));
-        $daysInMonth      = isset($daysInMonth)     ? $daysInMonth     : date('t');
-        $startWeekDay     = date('w', $firstDayOfMonth); // 0=Domingo
-        setlocale(LC_TIME, 'es_ES.UTF-8'); // para nombre de mes en español (si el server lo soporta)
+        $firstDayOfMonth  = $firstDayOfMonth ?? strtotime(date('Y-m-01'));
+        $daysInMonth      = $daysInMonth ?? date('t');
+        $startWeekDay     = date('w', $firstDayOfMonth);
+        setlocale(LC_TIME, 'es_ES.UTF-8');
         $monthName        = strftime('%B', $firstDayOfMonth);
         ?>
-
-        <!-- Desktop Version (Grid Table) -->
         <div class="month-desktop" style="padding:20px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                <a style="text-decoration:none; font-size:1.2rem;" 
-                   href="?view=month&prev=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&lt;&lt;</a>
-                
+                <a style="text-decoration:none; font-size:1.2rem;" href="?view=month&prev=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&lt;&lt;</a>
                 <div style="font-weight:bold; font-size:1.1rem;">
                     <?php echo ucfirst($monthName) . " " . $year; ?>
                 </div>
-
-                <a style="text-decoration:none; font-size:1.2rem;" 
-                   href="?view=month&next=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&gt;&gt;</a>
+                <a style="text-decoration:none; font-size:1.2rem;" href="?view=month&next=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&gt;&gt;</a>
             </div>
-
             <table class="month-table">
                 <thead>
                     <tr>
@@ -624,49 +657,32 @@ if ($view === 'month') {
                 <?php
                 $dayCounter = 1; 
                 $cellCount  = 0;
-
                 echo "<tr>";
                 for ($blank = 0; $blank < $startWeekDay; $blank++) {
                     echo "<td></td>";
                     $cellCount++;
                 }
-
                 while ($dayCounter <= $daysInMonth) {
                     if ($cellCount % 7 == 0 && $cellCount != 0) {
                         echo "</tr><tr>";
                     }
-
                     $currentCellDate = sprintf('%04d-%02d-%02d', $year, $month, $dayCounter);
                     $events = isset($monthEvents[$currentCellDate]) ? $monthEvents[$currentCellDate] : [];
-
                     echo "<td>";
-                    // Día con link
                     echo "<div style='font-weight:bold; margin-bottom:4px;'>
-                            <a href='?view=day&date=$currentCellDate' 
-                               style='text-decoration:none; color:#862D42;'>
-                                $dayCounter
-                            </a>
+                            <a href='?view=day&date=$currentCellDate' style='text-decoration:none; color:#862D42;'>$dayCounter</a>
                           </div>";
-
-                    // Eventos
                     foreach ($events as $ev) {
                         $t = htmlspecialchars($ev['time_slot']);
                         $d = htmlspecialchars($ev['description']);
                         echo "<div style='margin-bottom:4px; font-size:0.85rem;'>
-                                <a href='?view=day&date=$currentCellDate'
-                                   style='color:#862D42; text-decoration:none;'>
-                                   $t - $d
-                                </a>
+                                <a href='?view=day&date=$currentCellDate' style='color:#862D42; text-decoration:none;'>$t - $d</a>
                               </div>";
                     }
-
                     echo "</td>";
-
                     $dayCounter++;
                     $cellCount++;
                 }
-
-                // Celdas vacías para completar la última fila
                 while ($cellCount % 7 != 0) {
                     echo "<td></td>";
                     $cellCount++;
@@ -676,19 +692,12 @@ if ($view === 'month') {
                 </tbody>
             </table>
         </div>
-
-        <!-- Mobile Version (Vertical List) -->
+        
         <div class="month-mobile" style="padding:20px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                <a style="text-decoration:none; font-size:1.2rem;" 
-                   href="?view=month&prev=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&lt;&lt;</a>
-                
-                <div style="font-weight:bold; font-size:1.1rem;">
-                    <?php echo ucfirst($monthName) . " " . $year; ?>
-                </div>
-
-                <a style="text-decoration:none; font-size:1.2rem;" 
-                   href="?view=month&next=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&gt;&gt;</a>
+                <a style="text-decoration:none; font-size:1.2rem;" href="?view=month&prev=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&lt;&lt;</a>
+                <div style="font-weight:bold; font-size:1.1rem;"><?php echo ucfirst($monthName) . " " . $year; ?></div>
+                <a style="text-decoration:none; font-size:1.2rem;" href="?view=month&next=1&year=<?php echo $year; ?>&month=<?php echo $month; ?>">&gt;&gt;</a>
             </div>
             <?php
             for ($day = 1; $day <= $daysInMonth; $day++) {
@@ -701,20 +710,105 @@ if ($view === 'month') {
                     foreach ($monthEvents[$currentCellDate] as $ev) {
                         $t = htmlspecialchars($ev['time_slot']);
                         $d = htmlspecialchars($ev['description']);
-                        echo "<div style='font-size:0.85rem; margin-bottom:4px;'><a href='?view=day&date=$currentCellDate' style='color:#862D42; text-decoration:none;'>$t - $d</a></div>";
+                        echo "<div style='font-size:0.85rem; margin-bottom:4px;'>
+                                <a href='?view=day&date=$currentCellDate' style='color:#862D42; text-decoration:none;'>$t - $d</a>
+                              </div>";
                     }
                 }
                 echo '</div>';
             }
             ?>
         </div>
-
-    <!-- ****************************** -->
-    <!-- VISTA DIARIA (SLOTS + DATOS) -->
-    <!-- ****************************** -->
+    
+    <!-- Weekly View -->
+    <?php elseif ($view === 'week'): ?>
+        <div class="week-nav">
+            <a href="?view=week&prev=1&date=<?php echo $weekStart; ?>" title="Semana Anterior">&lt;&lt;</a>
+            <span><?php echo "$weekStart a $weekEnd"; ?></span>
+            <a href="?view=week&next=1&date=<?php echo $weekEnd; ?>" title="Semana Siguiente">&gt;&gt;</a>
+        </div>
+        <div class="week-view-container">
+            <?php 
+            // Loop through each day of the week.
+            $dateIterator = $weekStart;
+            for ($d = 0; $d < 7; $d++):
+                $dayTimestamp = strtotime($dateIterator);
+                $dayName = strftime('%A', $dayTimestamp); 
+            ?>
+                <div class="week-day-column">
+                    <div class="week-day-header">
+                        <span class="day-name"><?php echo ucfirst($dayName); ?></span>
+                        <span class="day-date"><?php echo $dateIterator; ?></span>
+                    </div>
+                    <div class="week-time-slots">
+                        <?php 
+                        foreach ($timeSlots as $slot):
+                            $event = isset($weeklyEvents[$dateIterator][$slot]) ? 
+                                     $weeklyEvents[$dateIterator][$slot] : 
+                                     ['description'=>'', 'color_tag'=>'#ffffff', 'group_flag'=>0];
+                        ?>
+                        <div class="week-slot-row" data-date="<?php echo $dateIterator; ?>" data-timeslot="<?php echo $slot; ?>">
+                            <div class="slot-time"><?php echo $slot; ?></div>
+                            <input type="color" class="slot-color-input" value="<?php echo htmlspecialchars($event['color_tag']); ?>">
+                            <input type="checkbox" class="slot-group-input" <?php echo $event['group_flag'] ? 'checked' : ''; ?>>
+                            <textarea class="slot-input"><?php echo htmlspecialchars($event['description']); ?></textarea>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php 
+                $dateIterator = date('Y-m-d', strtotime("$dateIterator +1 day"));
+            endfor; 
+            ?>
+        </div>
+        <script>
+        (function(){
+            document.querySelectorAll('.week-slot-row').forEach(function(row) {
+                row.querySelector('.slot-color-input').addEventListener('input', function(){
+                    row.style.backgroundColor = this.value;
+                    saveWeeklySlot(row);
+                });
+                row.querySelector('.slot-group-input').addEventListener('change', function(){
+                    saveWeeklySlot(row);
+                });
+                row.querySelector('.slot-input').addEventListener('input', function(){
+                    saveWeeklySlot(row);
+                });
+            });
+            function saveWeeklySlot(row) {
+                const date = row.getAttribute('data-date');
+                const timeSlot = row.getAttribute('data-timeslot');
+                const description = row.querySelector('.slot-input').value;
+                const colorTag = row.querySelector('.slot-color-input').value;
+                const groupFlag = row.querySelector('.slot-group-input').checked ? 1 : 0;
+                
+                fetch('index.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        ajax: '1',
+                        action: 'update_slot',
+                        date: date,
+                        time_slot: timeSlot,
+                        description: description,
+                        color_tag: colorTag,
+                        group_flag: groupFlag
+                    })
+                })
+                .then(response => response.json())
+                .then(resp => {
+                    if (resp.status !== 'ok') {
+                        console.error("Error al guardar el slot:", resp);
+                    }
+                })
+                .catch(err => console.error(err));
+            }
+        })();
+        </script>
+    
+    <!-- Day View -->
     <?php else: ?>
         <div class="agenda-container">
-            <!-- Panel Izquierdo: Time Slots -->
             <div class="left-panel">
                 <table class="time-table" title="Tabla de horarios (cada 30 minutos)">
                     <thead>
@@ -733,36 +827,21 @@ if ($view === 'month') {
                         $checked   = $groupFlag ? 'checked' : '';
                     ?>
                         <tr class="time-slot-row" data-timeslot="<?php echo $slot; ?>">
-                            <!-- Hora -->
                             <td class="slot-label"><?php echo $slot; ?></td>
-                            <!-- Color -->
                             <td class="slot-color">
-                                <input type="color"
-                                       class="slot-color-input"
-                                       data-timeslot="<?php echo $slot; ?>"
-                                       value="<?php echo htmlspecialchars($colorTag); ?>">
+                                <input type="color" class="slot-color-input" data-timeslot="<?php echo $slot; ?>" value="<?php echo htmlspecialchars($colorTag); ?>">
                             </td>
-                            <!-- Group -->
                             <td class="slot-group">
-                                <input type="checkbox"
-                                       class="slot-group-input"
-                                       data-timeslot="<?php echo $slot; ?>"
-                                       <?php echo $checked; ?>>
+                                <input type="checkbox" class="slot-group-input" data-timeslot="<?php echo $slot; ?>" <?php echo $checked; ?>>
                             </td>
-                            <!-- Contenido -->
                             <td>
-                                <textarea class="slot-input"
-                                          data-timeslot="<?php echo $slot; ?>"
-                                          title="Notas para la hora <?php echo $slot; ?>"
-                                ><?php echo htmlspecialchars($desc); ?></textarea>
+                                <textarea class="slot-input" data-timeslot="<?php echo $slot; ?>" title="Notas para la hora <?php echo $slot; ?>"><?php echo htmlspecialchars($desc); ?></textarea>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-
-            <!-- Panel Derecho: Datos Diarios -->
             <div class="right-panel">
                 <?php
                 $notes           = $dailyData['notes']            ?? '';
@@ -778,121 +857,75 @@ if ($view === 'month') {
                 $exercise_time   = $dailyData['exercise_time']    ?? 0;
                 $exercise_desc   = $dailyData['exercise_desc']    ?? '';
                 ?>
-
                 <h2>Información Diaria</h2>
-
                 <label>Notas</label>
                 <textarea class="daily-data" data-field="notes"><?php echo htmlspecialchars($notes); ?></textarea>
-
                 <label>Lista de Tareas</label>
                 <textarea class="daily-data" data-field="checklist"><?php echo htmlspecialchars($checklist); ?></textarea>
-
                 <label>Menú Diario</label>
                 <textarea class="daily-data" data-field="daily_menu"><?php echo htmlspecialchars($daily_menu); ?></textarea>
-
                 <label>Reflexiones / Saludos</label>
                 <textarea class="daily-data" data-field="thoughts"><?php echo htmlspecialchars($thoughts); ?></textarea>
-
                 <div class="hours-grid">
                     <div>
                         <label>😴 (h)</label>
-                        <input type="number" step="0.5" class="daily-data" data-field="sleep_time"
-                               value="<?php echo $sleep_time; ?>">
+                        <input type="number" step="0.5" class="daily-data" data-field="sleep_time" value="<?php echo $sleep_time; ?>">
                     </div>
                     <div>
                         <label>💚 (h)</label>
-                        <input type="number" step="0.5" class="daily-data" data-field="social_time"
-                               value="<?php echo $social_time; ?>">
+                        <input type="number" step="0.5" class="daily-data" data-field="social_time" value="<?php echo $social_time; ?>">
                     </div>
                     <div>
                         <label>😊 (h)</label>
-                        <input type="number" step="0.5" class="daily-data" data-field="me_time"
-                               value="<?php echo $me_time; ?>">
+                        <input type="number" step="0.5" class="daily-data" data-field="me_time" value="<?php echo $me_time; ?>">
                     </div>
                     <div>
                         <label>💧 (L)</label>
-                        <input type="number" step="0.5" class="daily-data" data-field="water_drinked"
-                               value="<?php echo $water_drinked; ?>">
+                        <input type="number" step="0.5" class="daily-data" data-field="water_drinked" value="<?php echo $water_drinked; ?>">
                     </div>
                     <div>
                         <label>🌞 (h)</label>
-                        <input type="number" step="0.5" class="daily-data" data-field="meditation_time"
-                               value="<?php echo $meditation_time; ?>">
+                        <input type="number" step="0.5" class="daily-data" data-field="meditation_time" value="<?php echo $meditation_time; ?>">
                     </div>
                     <div>
                         <label>🚀 (h)</label>
-                        <input type="number" step="0.5" class="daily-data" data-field="project_time"
-                               value="<?php echo $project_time; ?>">
+                        <input type="number" step="0.5" class="daily-data" data-field="project_time" value="<?php echo $project_time; ?>">
                     </div>
                 </div>
-
                 <div class="exercise-row">
                     <div>
                         <label>Tiempo de Ejercicio (h)</label>
-                        <input type="number" step="0.5" class="daily-data" data-field="exercise_time"
-                               value="<?php echo $exercise_time; ?>">
+                        <input type="number" step="0.5" class="daily-data" data-field="exercise_time" value="<?php echo $exercise_time; ?>">
                     </div>
                     <div>
                         <label>Descripción de Ejercicio</label>
-                        <input type="text" class="daily-data" data-field="exercise_desc"
-                               value="<?php echo htmlspecialchars($exercise_desc); ?>"
-                               placeholder="Ej: Correr, Yoga, Pesas...">
+                        <input type="text" class="daily-data" data-field="exercise_desc" value="<?php echo htmlspecialchars($exercise_desc); ?>" placeholder="Ej: Correr, Yoga, Pesas...">
                     </div>
                 </div>
             </div>
-        </div> <!-- End agenda-container -->
-
-        <!-- Script para guardado AJAX (slots y daily_data) -->
+        </div>
         <script>
         (function(){
             const currentDate = "<?php echo $currentDate; ?>";
-
-            // Toggle group checkbox by clicking entire <td>
-            document.querySelectorAll('.slot-group').forEach(td => {
-                td.addEventListener('click', function(e){
-                    if (e.target.classList.contains('slot-group-input')) {
-                        return; 
-                    }
-                    const checkbox = td.querySelector('.slot-group-input');
-                    checkbox.checked = !checkbox.checked;
+            document.querySelectorAll('.time-slot-row').forEach(row => {
+                row.querySelector('.slot-color-input').addEventListener('input', function(){
+                    const rowElem = this.closest('tr.time-slot-row');
+                    rowElem.style.backgroundColor = this.value;
+                    saveSlotFromRow(rowElem);
+                });
+                row.querySelector('.slot-group-input').addEventListener('change', function(){
                     saveSlotFromRow(this.closest('tr.time-slot-row'));
-                    refreshGroupingVisual();
-                    e.stopPropagation();
+                });
+                row.querySelector('.slot-input').addEventListener('input', function(){
+                    saveSlotFromRow(this.closest('tr.time-slot-row'));
                 });
             });
-
-            // Check/uncheck directly
-            document.querySelectorAll('.slot-group-input').forEach(cb => {
-                cb.addEventListener('change', function(){
-                    saveSlotFromRow(cb.closest('tr.time-slot-row'));
-                    refreshGroupingVisual();
-                });
-            });
-
-            // Color changes
-            document.querySelectorAll('.slot-color-input').forEach(elem => {
-                elem.addEventListener('input', function(){
-                    const row = this.closest('tr.time-slot-row');
-                    row.style.backgroundColor = this.value;
-                    saveSlotFromRow(row);
-                });
-            });
-
-            // Description changes
-            document.querySelectorAll('.slot-input').forEach(elem => {
-                elem.addEventListener('input', function(){
-                    const row = this.closest('tr.time-slot-row');
-                    saveSlotFromRow(row);
-                });
-            });
-
-            // Save slot
             function saveSlotFromRow(row) {
-                const timeSlot    = row.getAttribute('data-timeslot');
+                const timeSlot = row.getAttribute('data-timeslot');
                 const description = row.querySelector('.slot-input').value;
-                const colorTag    = row.querySelector('.slot-color-input').value;
-                const groupFlag   = row.querySelector('.slot-group-input').checked ? 1 : 0;
-
+                const colorTag = row.querySelector('.slot-color-input').value;
+                const groupFlag = row.querySelector('.slot-group-input').checked ? 1 : 0;
+                
                 fetch('index.php', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -914,8 +947,6 @@ if ($view === 'month') {
                 })
                 .catch(err => console.error(err));
             }
-
-            // Daily data changes
             document.querySelectorAll('.daily-data').forEach(function(elem){
                 elem.addEventListener('input', function(){
                     let field = this.getAttribute('data-field');
@@ -943,49 +974,6 @@ if ($view === 'month') {
                 })
                 .catch(err => console.error(err));
             }
-
-            // Refresh grouping lines
-            function refreshGroupingVisual() {
-                const rows = Array.from(document.querySelectorAll('.time-slot-row'));
-                rows.forEach(r => {
-                    const tdGroup = r.querySelector('.slot-group');
-                    tdGroup.classList.remove('grouped','group-start','group-end');
-                });
-
-                let groupActive = false;
-                let startIndex  = -1;
-
-                for (let i = 0; i < rows.length; i++) {
-                    const cb  = rows[i].querySelector('.slot-group-input');
-                    const tdG = rows[i].querySelector('.slot-group');
-                    if (cb && cb.checked) {
-                        tdG.classList.add('grouped');
-                        if (!groupActive) {
-                            groupActive = true;
-                            startIndex  = i;
-                        }
-                    } else {
-                        if (groupActive) {
-                            rows[i-1].querySelector('.slot-group').classList.add('group-end');
-                            rows[startIndex].querySelector('.slot-group').classList.add('group-start');
-                        }
-                        groupActive = false;
-                    }
-                }
-                if (groupActive) {
-                    rows[rows.length - 1].querySelector('.slot-group').classList.add('group-end');
-                    rows[startIndex].querySelector('.slot-group').classList.add('group-start');
-                }
-            }
-
-            // On page load
-            window.addEventListener('load', function(){
-                document.querySelectorAll('.time-slot-row').forEach(row => {
-                    const colorVal = row.querySelector('.slot-color-input').value;
-                    row.style.backgroundColor = colorVal;
-                });
-                refreshGroupingVisual();
-            });
         })();
         </script>
     <?php endif; ?>
