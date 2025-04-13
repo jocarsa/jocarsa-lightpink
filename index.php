@@ -168,7 +168,6 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         $exists = $check->execute()->fetchArray(SQLITE3_ASSOC);
 
         if ($exists) {
-            // Update
             $upd = $db->prepare("
                 UPDATE day_slots
                    SET description = :desc,
@@ -182,7 +181,6 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
             $upd->bindValue(':id',         $exists['id']);
             $upd->execute();
         } else {
-            // Insert
             $ins = $db->prepare("
                 INSERT INTO day_slots (user_id, date, time_slot, description, color_tag, group_flag)
                 VALUES (:u, :d, :ts, :desc, :color_tag, :group_flag)
@@ -227,7 +225,6 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         $row = $check->execute()->fetchArray(SQLITE3_ASSOC);
 
         if ($row) {
-            // Update
             $upd = $db->prepare("
                 UPDATE daily_data
                    SET $field = :val
@@ -237,7 +234,6 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
             $upd->bindValue(':id', $row['id']);
             $upd->execute();
         } else {
-            // Insert with default values and the updated field
             $insFields = [
                 'notes'            => '',
                 'checklist'        => '',
@@ -285,7 +281,6 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
         exit;
     }
 
-    // Invalid action
     echo json_encode(['status' => 'error', 'message' => 'Acción no válida.']);
     exit;
 }
@@ -300,7 +295,6 @@ $view = isset($_GET['view']) ? $_GET['view'] : 'day';
 // ----------------------------------------------------------------------
 if ($view === 'day') {
     $currentDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
-    // Navigation: previous/next
     if (isset($_GET['prev']) && $_GET['prev'] == 1) {
         $time = strtotime($currentDate) - 86400;
         $currentDate = date('Y-m-d', $time);
@@ -309,16 +303,12 @@ if ($view === 'day') {
         $time = strtotime($currentDate) + 86400;
         $currentDate = date('Y-m-d', $time);
     }
-
-    // Retrieve daily_data and day_slots for the current day
     $dailyData   = [];
     $timeSlots   = [];
     $daySlotData = [];
 
     if (isset($_SESSION['user_id'])) {
         $user_id = $_SESSION['user_id'];
-
-        // a) daily_data query
         $stmt = $db->prepare("
             SELECT * FROM daily_data 
             WHERE user_id = :u 
@@ -329,14 +319,12 @@ if ($view === 'day') {
         $res = $stmt->execute();
         $dailyData = $res->fetchArray(SQLITE3_ASSOC);
 
-        // b) Generate slots from 06:00 to 24:00 in 30-minute intervals
         $start = strtotime("06:00");
         $end   = strtotime("24:00");
         for ($t = $start; $t < $end; $t += 1800) {
             $timeSlots[] = date('H:i', $t);
         }
 
-        // c) Retrieve existing day_slots
         $slotStmt = $db->prepare("
             SELECT time_slot, description, color_tag, group_flag
             FROM day_slots
@@ -408,10 +396,10 @@ if ($view === 'month') {
 }
 
 if ($view === 'week') {
-    // Use the provided date or current date as reference.
+    // Use provided date or current date as reference.
     $currentDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
     
-    // Compute week boundaries (assuming week starts on Sunday)
+    // Compute week boundaries (week starting on Sunday).
     $timestamp = strtotime($currentDate);
     $weekday   = date('w', $timestamp);
     $weekStartTimestamp = strtotime("-{$weekday} days", $timestamp);
@@ -419,9 +407,7 @@ if ($view === 'week') {
     $weekStart = date('Y-m-d', $weekStartTimestamp);
     $weekEnd   = date('Y-m-d', $weekEndTimestamp);
 
-    // Navigation for week view
     if (isset($_GET['prev']) && $_GET['prev'] == 1) {
-         // Move one week back.
          $newDate = date('Y-m-d', strtotime("$weekStart -7 days"));
          $currentDate = $newDate;
          $timestamp = strtotime($currentDate);
@@ -432,7 +418,6 @@ if ($view === 'week') {
          $weekEnd   = date('Y-m-d', $weekEndTimestamp);
     }
     if (isset($_GET['next']) && $_GET['next'] == 1) {
-         // Move one week forward.
          $newDate = date('Y-m-d', strtotime("$weekEnd +1 day"));
          $currentDate = $newDate;
          $timestamp = strtotime($currentDate);
@@ -443,7 +428,7 @@ if ($view === 'week') {
          $weekEnd   = date('Y-m-d', $weekEndTimestamp);
     }
 
-    // Retrieve events for the week
+    // Retrieve events for the week.
     $weeklyEvents = [];
     if (isset($_SESSION['user_id'])) {
         $user_id = $_SESSION['user_id'];
@@ -472,13 +457,14 @@ if ($view === 'week') {
         }
     }
 
-    // Generate hourly slots for the weekly view (00:00 to 23:00)
+    // Generate half-hour time slots from 00:00 to 24:00.
     $timeSlots = [];
-    for ($h = 0; $h < 24; $h++) {
-         $timeSlots[] = sprintf('%02d:00', $h);
+    $start = strtotime("00:00");
+    $end   = strtotime("24:00");
+    for ($t = $start; $t < $end; $t += 1800) {
+         $timeSlots[] = date('H:i', $t);
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -507,11 +493,9 @@ if ($view === 'week') {
     <!-- If logged in, show user info and navigation -->
     <?php if (isset($_SESSION['user_id'])): ?>
         <div class="header-userinfo">
-            <!-- User Name -->
             <div class="welcome" title="Nombre del usuario conectado">
                 <?php echo htmlspecialchars($_SESSION['full_name']); ?>
             </div>
-            <!-- Navigation for day view -->
             <?php if ($view === 'day'): ?>
                 <nav class="date-nav">
                     <a href="?view=day&prev=1&date=<?php echo $currentDate; ?>" title="Día anterior">&lt;</a>
@@ -520,7 +504,6 @@ if ($view === 'week') {
                 </nav>
             <?php endif; ?>
 
-            <!-- Additional Links: toggle between views and logout -->
             <div class="header-links">
                 <?php if ($view === 'day'): ?>
                     <a href="?view=month" title="Ver vista mensual">&#128197; Mes</a>
@@ -729,11 +712,10 @@ if ($view === 'week') {
         </div>
         <div class="week-view-container">
             <?php 
-            // Loop through each day of the week.
             $dateIterator = $weekStart;
             for ($d = 0; $d < 7; $d++):
                 $dayTimestamp = strtotime($dateIterator);
-                $dayName = strftime('%A', $dayTimestamp); 
+                $dayName = strftime('%A', $dayTimestamp);
             ?>
                 <div class="week-day-column">
                     <div class="week-day-header">
